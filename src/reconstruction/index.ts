@@ -7,3 +7,5 @@ export * from './Symmetry.ts';
 export * from './SingleLayerOptimizer.ts';
 export * from './ResidualAnalyzer.ts';
 export * from './MultiLayerReconstructor.ts';
+export * from './RegionRepresentation.ts';
+export * from './ImageSimplifier.ts';

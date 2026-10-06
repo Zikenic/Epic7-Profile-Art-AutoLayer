@@ -162,6 +162,8 @@ export class MultiLayerReconstructor {
     const resolved = {
       maxLayers: Math.min(MAX_LAYERS, options.maxLayers ?? MAX_LAYERS),
       minImprovement: options.minImprovement ?? 0.003,
+      minImprovementFloor: options.minImprovementFloor ?? 0.0005,
+      relativeImprovementFraction: options.relativeImprovementFraction ?? 0.15,
       searchResolution: options.searchResolution ?? { width: 105, height: 155 },
       verificationResolution: options.verificationResolution ?? { width: 210, height: 310 },
       enablePolish: options.enablePolish ?? true,
@@ -397,6 +399,16 @@ export class MultiLayerReconstructor {
       let acceptedFinalist: EvaluatedCandidate | null = null;
       let acceptedScore: ScoreResult | null = null;
       let acceptedVerifiedImprovement = 0;
+      // Dynamic effective threshold: scales with remaining loss, bounded by floor and ceiling
+      const effectiveMinImprovement = resolved.relativeImprovementFraction > 0
+        ? Math.max(
+            resolved.minImprovementFloor,
+            Math.min(
+              resolved.minImprovement,
+              currentVerificationScore.totalLoss * resolved.relativeImprovementFraction
+            )
+          )
+        : resolved.minImprovement;
 
       for (const finalist of finalists) {
         if (Date.now() - startTime >= resolved.timeoutMs) break;
@@ -417,7 +429,7 @@ export class MultiLayerReconstructor {
         const verifiedScore = ImageScorer.score(verificationTarget, verifiedRender, resolved.weights);
         const verifiedImprovement = currentVerificationScore.totalLoss - verifiedScore.totalLoss;
 
-        if (verifiedImprovement >= resolved.minImprovement) {
+        if (verifiedImprovement >= effectiveMinImprovement) {
           if (!acceptedFinalist || verifiedImprovement > acceptedVerifiedImprovement + 1e-4) {
             acceptedFinalist = finalist;
             acceptedScore = verifiedScore;

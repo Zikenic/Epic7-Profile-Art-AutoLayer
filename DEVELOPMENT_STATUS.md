@@ -77,33 +77,58 @@
 All 7 test suites pass with zero failures:
 1. `test_engine.mjs`: Profile card data structures, layer ordering, and 130-layer limit.
 2. `test_calibration.mjs`: Native square frame calibration consistency.
+### E. Adaptive Image Simplifier & Region Preprocessing (Phase 5)
+- **Module**: `ImageSimplifier.ts` and `RegionRepresentation.ts`.
+- **Edge-Preserving Smoothing**: Bilateral filter on Lab channels ($5\times 5$ window, spatial $\sigma_s = 2.0$, range $\sigma_r = 15.0$) suppresses high-frequency antialiasing and gradient noise without blurring structural edges.
+- **Adaptive Perceptual Color Quantization**: Lab-space K-means clustering with deterministic Mulberry32 seed and dynamic $K$ selection ($8 \le K \le 16$) based on image color variance.
+- **Palette Mapping**: Maps cluster centers in Lab space to the 26 authoritative Epic Seven palette colors (`findClosestPaletteColorFromLab()`), preserving pre-snapped cluster colors and $\Delta E$ diagnostics.
+- **Spatial Macro-Region Extraction**: 8-connected BFS extracts coherent spatial regions on the quantized buffer.
+- **Island Merging & Detail Protection**: Merges sub-threshold islands ($< 0.35\%$ area) into adjacent color-compatible neighbors while protecting high-contrast salient features (eyes, pupils, accessories) using contrast, enclosure ratio ($> 50\%$), and saliency signals.
+- **Adaptive `minImprovement` Threshold**: Replaces rigid static threshold with dynamic scaling:
+  $\text{effectiveThreshold} = \max(\text{floor},\; \min(\text{ceiling},\; \text{currentLoss} \cdot \text{fraction}))$, allowing subtle foreground details to be reconstructed without premature stalling.
+
+---
+
+## 2. Test Suites & Verification Results
+
+### A. Core Regression Suites (`npm test`)
+1. `test_engine.mjs`: Core ProfileEngine operations and layer limits.
+2. `test_calibration.mjs`: Native frame calibration vs in-game captures.
 3. `test_math_primitives.mjs`: Mathematical path generation for all 13 primitives.
 4. `test_editor_regression.mjs`: Canvas ratio, transform bounds, and layer operations.
 5. `test_scoring.mjs`: Color conversion, alpha masking, identity loss, and metric monotonicity.
 6. `test_optimizer.mjs`: 6 synthetic single-layer recovery scenarios, including zero-drift dynamic calibration verification.
-7. `test_multilayer.mjs`: Complete Milestone 4 test suite (Tests A through H).
+7. `test_multilayer.mjs`: Complete Milestone 4 test suite (Tests A through L, including determinism, strict layer improvement, layer order sensitivity, and cumulative drift safety).
+8. `test_simplifier.mjs`: Complete Phase 5 test suite (Tests A through H).
 
-### B. Milestone 4 Synthetic Reconstruction Results (`npm run test:multilayer`)
-| Test | Scenario | Initial Loss | Final Loss | Layers (Pre $\to$ Post) | Status |
+### B. Phase 5 Simplifier Test Results (`npm run test:simplifier`)
+| Test | Scenario | Raw Regions | Simplified Regions | Result |
+|---|---|---|---|---|
+| **Test A** | Flat Solid Regions | 3 | 3 | **PASSED** (Minimal regions, 3 palette colors preserved) |
+| **Test B** | Smooth Continuous Gradient | 5 | 5 | **PASSED** (Quantized into 5 tonal bands, zero 1-px islands) |
+| **Test C** | Antialiased Edge Boundary | 119 | 2 | **PASSED** (117 fringe artifacts merged into circle/background) |
+| **Test D** | Small High-Contrast Detail | 2 | 2 | **PASSED** (8x8 pupil preserved with saliency 0.438) |
+| **Test E** | Random Pixel Salt & Pepper Noise | 46 | 2 | **PASSED** (Noise suppressed, macro-structures retained) |
+| **Test F** | Disconnected Same-Color Regions | 3 | 3 | **PASSED** (2 disconnected foreground circles cleanly isolated) |
+| **Test G** | Determinism & Repeatability | - | - | **PASSED** (Bit-for-bit identical raster and region list) |
+| **Test H** | Adaptive `minImprovement` Acceptance | - | - | **PASSED** (Subtle foreground circle recovered at loss 0.0002) |
+
+### C. Real-Image Diagnostic Comparison
+| Image | Raw Pipeline Regions | Simplified Pipeline Regions | Simplifier Runtime | Raw Recon Layers / Loss | Simplified Recon Layers / Loss |
 |---|---|---|---|---|---|
-| **Test A** | Two Non-Overlapping Shapes (`Circle` + `Triangle`) | 0.8921 | **0.0097** | 2 $\to$ 2 | **PASSED** |
-| **Test B** | Overlapping Shapes in Painter's Stacking Order (`Rounded_Square` base + `Heart` top) | 0.9744 | **0.0167** | 2 $\to$ 2 | **PASSED** |
-| **Test C** | Multiple Palette Colors (`Pill` `#e43032` + `Star` `#11d4bd` + `Heart` `#fe9dbe`) | 0.9038 | **0.0171** | 3 $\to$ 3 | **PASSED** |
-| **Test D** | Disconnected Same-Color Shapes (2 separate green Circles) | 0.8388 | **0.0133** | 2 $\to$ 2 | **PASSED** |
-| **Test E** | Redundant Layer Pruning via Reduction Pass | 1.0000 | **0.0035** | 1 $\to$ 1 | **PASSED** |
-| **Test F** | Hard Budget Enforcement (`maxLayers` = 1, 2, 5) | - | - | Strictly capped | **PASSED** |
-| **Test G** | Imperfect / Noisy Target Stability (Anti-Aliasing robustness) | 0.8921 | **0.0145** | 2 $\to$ 2 | **PASSED** |
-| **Test H** | Direct Export to `.e7profile.json` Serialization | - | - | Valid schema | **PASSED** |
+| **Image 1 (`Seriane.png`)** | 2,000+ (pathological) | **11 coherent regions** | **107 ms** | 1 layer / 0.0125 (stalled) | 1 layer / 0.0001 (target matched) |
+| **Image 2 (`wp15313950.jpg`)** | 523 (fragmented) | **12 coherent regions** | **123 ms** | 4 layers / 0.2288 (timeout) | 4 layers / **0.0732 vs original** |
 
-### C. Build Verification (`npm run build`)
-- Clean compilation via `tsc && vite build` (output emitted to `dist/` in 2.58s).
+### D. Build Verification (`npm run build`)
+- Clean compilation via `tsc && vite build` (output emitted to `dist/` in 1.88s).
 - `node_modules` remains completely unpatched and pristine.
 
 ---
 
 ## 3. Known Limitations & Next Steps
 
-1. **Milestone 5 Next Step**:
-   - Auto-Layer UI integration: Crop interface, image drag-and-drop / upload modal, progress bar / live preview during greedy iterations.
+1. **Phase 6 / Milestone 5 Next Step**:
+   - AutoLayer UI integration: Crop workspace (21:31 ratio), drag-and-drop / upload modal, live progress rendering.
+   - Web Worker execution for ImageSimplifier and MultiLayerReconstructor.
 2. **Highly Complex Freeform Vector Art**:
    - Complex non-geometric illustrations with thousands of curves will be approximated using up to 130 overlapping geometric primitives.

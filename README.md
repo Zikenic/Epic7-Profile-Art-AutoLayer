@@ -110,6 +110,7 @@ node --experimental-strip-types test_editor_regression.mjs
 node --experimental-strip-types test_scoring.mjs
 node --experimental-strip-types test_optimizer.mjs
 node --experimental-strip-types test_multilayer.mjs
+node --experimental-strip-types test_simplifier.mjs
 
 # Run held-out single-layer recovery benchmark (120 synthetic cases)
 npm run test:heldout
@@ -123,4 +124,5 @@ npm run test:heldout
 - [x] **Milestone 2**: Headless multi-term image scorer with Lab color space and multi-resolution proxy evaluation.
 - [x] **Milestone 3**: Single-layer optimizer with moment estimation, symmetry registry, anisotropic candidate generation, and hierarchical coordinate descent.
 - [x] **Milestone 4**: Greedy multi-layer reconstruction engine (`MultiLayerReconstructor`), color-homogeneous residual analysis, candidate ranking, authoritative verification, local polish, and post-greedy layer reduction.
-- [ ] **Milestone 5** (Planned): AutoLayer UI integration, interactive image upload, and crop workspace.
+- [x] **Phase 5**: Adaptive Image Simplifier (`ImageSimplifier`), edge-preserving Lab smoothing, adaptive perceptual quantization, spatial macro-region extraction, island merging with detail preservation, and adaptive `minImprovement` semantics.
+- [ ] **Milestone 5 / Phase 6** (Planned): AutoLayer UI integration, interactive image upload, and crop workspace.

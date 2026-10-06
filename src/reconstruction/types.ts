@@ -118,7 +118,9 @@ export interface Resolution {
  */
 export interface ReconstructionOptions {
   maxLayers?: number;                  // Hard maximum layer budget (default 130)
-  minImprovement?: number;             // Minimum verified loss reduction required to accept a layer (default 0.003)
+  minImprovement?: number;             // Baseline/maximum verified loss reduction required to accept a layer (default 0.003)
+  minImprovementFloor?: number;        // Absolute floor below which improvements are rejected as sub-pixel noise (default 0.0005)
+  relativeImprovementFraction?: number;// Fraction of remaining total loss required for acceptance (default 0.15, 0 = disabled)
   searchResolution?: Resolution;       // Low resolution for fast candidate generation & ranking (default 105x155)
   verificationResolution?: Resolution; // Authoritative resolution for finalist verification (default 210x310)
   enablePolish?: boolean;              // Coordinate refinement on accepted layers (default true)

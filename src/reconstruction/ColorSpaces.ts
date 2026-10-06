@@ -89,11 +89,19 @@ const PALETTE_LAB_CACHE: { hex: string; rgb: RGB; lab: Lab }[] = EPIC7_PALETTE_H
  * Finds the closest authoritative Epic Seven palette color for an arbitrary RGB color.
  */
 export function findClosestPaletteColor(rgb: RGB): { hex: string; distance: number } {
-  const targetLab = rgbToLab(rgb);
+  return findClosestPaletteColorFromLab(rgbToLab(rgb));
+}
+
+/**
+ * Finds the closest authoritative Epic Seven palette color for an arbitrary Lab color.
+ */
+export function findClosestPaletteColorFromLab(targetLab: Lab): { hex: string; distance: number; paletteIndex: number } {
   let bestHex = PALETTE_LAB_CACHE[0].hex;
+  let bestIndex = 0;
   let minDistance = Infinity;
 
-  for (const entry of PALETTE_LAB_CACHE) {
+  for (let i = 0; i < PALETTE_LAB_CACHE.length; i++) {
+    const entry = PALETTE_LAB_CACHE[i];
     const dL = targetLab.L - entry.lab.L;
     const da = targetLab.a - entry.lab.a;
     const db = targetLab.b - entry.lab.b;
@@ -101,8 +109,40 @@ export function findClosestPaletteColor(rgb: RGB): { hex: string; distance: numb
     if (dE < minDistance) {
       minDistance = dE;
       bestHex = entry.hex;
+      bestIndex = i;
     }
   }
 
-  return { hex: bestHex, distance: minDistance / 100.0 };
+  return { hex: bestHex, distance: minDistance / 100.0, paletteIndex: bestIndex };
+}
+
+/**
+ * Converts CIE Lab back to sRGB [0..255] under D65 illuminant.
+ */
+export function labToRgb(lab: Lab): RGB {
+  const fy = (lab.L + 16) / 116;
+  const fx = lab.a / 500 + fy;
+  const fz = fy - lab.b / 200;
+
+  const delta = 6 / 29;
+  const invF = (t: number) => (t > delta ? t * t * t : 3 * delta * delta * (t - 4 / 29));
+
+  const X = 0.95047 * invF(fx);
+  const Y = 1.00000 * invF(fy);
+  const Z = 1.08883 * invF(fz);
+
+  // XYZ to linear sRGB
+  const rLin = X * 3.2406 + Y * -1.5372 + Z * -0.4986;
+  const gLin = X * -0.9689 + Y * 1.8758 + Z * 0.0415;
+  const bLin = X * 0.0557 + Y * -0.2040 + Z * 1.0570;
+
+  // linear sRGB to sRGB
+  const gamma = (c: number) => (c > 0.0031308 ? 1.055 * Math.pow(c, 1 / 2.4) - 0.055 : 12.92 * c);
+  const clamp = (v: number) => Math.max(0, Math.min(255, Math.round(v)));
+
+  return {
+    r: clamp(gamma(rLin) * 255),
+    g: clamp(gamma(gLin) * 255),
+    b: clamp(gamma(bLin) * 255)
+  };
 }
