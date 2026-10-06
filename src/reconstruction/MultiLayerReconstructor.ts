@@ -8,7 +8,8 @@ import type {
   ReconstructionResult,
   AcceptedLayerRecord,
   ScoreResult,
-  ScoreWeights
+  ScoreWeights,
+  Resolution
 } from './types.ts';
 import { DEFAULT_SCORE_WEIGHTS } from './types.ts';
 import {
@@ -866,7 +867,49 @@ export class MultiLayerReconstructor {
   }
 
   /**
-   * Post-greedy reduction pass to prune redundant or low-contribution layers.
+   * Post-greedy reduction pass to prune redundant or low-contribution layers with drift safety.
+   * Ensures cumulative degradation cannot exceed reductionTolerance relative to the baseline start-of-pass loss.
+   */
+  public static reduceLayers(
+    layers: Layer[],
+    target: RasterImage,
+    options: {
+      reductionTolerance?: number;
+      verificationResolution?: Resolution;
+      weights?: ScoreWeights;
+      renderMode?: RenderMode;
+    } = {}
+  ): { layers: Layer[]; score: ScoreResult; prunedCount: number } {
+    const verW = options.verificationResolution?.width || 210;
+    const verH = options.verificationResolution?.height || 310;
+    const weights = options.weights || DEFAULT_SCORE_WEIGHTS;
+    const renderMode = options.renderMode || 'mathematical';
+    const tolerance = options.reductionTolerance ?? 0.002;
+
+    const initialRender = renderLayersToRaster(layers, verW, verH, { backgroundColor: 'transparent', renderMode });
+    const initialScore = ImageScorer.score(target, initialRender, weights);
+
+    const result = this.runReductionPass(
+      layers,
+      target,
+      verW,
+      verH,
+      initialScore.totalLoss,
+      tolerance,
+      weights,
+      renderMode
+    );
+
+    const reindexed = result.layers.map((l, idx) => ({ ...l, zIndex: idx }));
+    return {
+      layers: reindexed,
+      score: result.score,
+      prunedCount: layers.length - reindexed.length
+    };
+  }
+
+  /**
+   * Internal reduction pass implementation using start-of-pass baseline loss anchor.
    */
   private static runReductionPass(
     layers: Layer[],
@@ -880,6 +923,7 @@ export class MultiLayerReconstructor {
   ): { layers: Layer[]; score: ScoreResult } {
     let workingLayers = [...layers];
     let workingLoss = initialLoss;
+    // Explicit baseline anchor: total visual loss cannot exceed initial baseline + tolerance
     const maxAllowedLoss = initialLoss + reductionTolerance;
     let workingScore = ImageScorer.score(
       target,
@@ -912,7 +956,7 @@ export class MultiLayerReconstructor {
         }
       }
 
-      // Check if removing the least impactful layer is within total allowed tolerance
+      // Check if removing the least impactful layer is within the cumulative allowed tolerance
       if (
         bestRemovalIdx >= 0 &&
         candidateScoreForBest &&
@@ -941,4 +985,20 @@ export function reconstruct(
   options: ReconstructionOptions = {}
 ): ReconstructionResult {
   return MultiLayerReconstructor.reconstruct(target, options);
+}
+
+/**
+ * Top-level export for post-greedy reduction pass with drift safety.
+ */
+export function reduceLayers(
+  layers: Layer[],
+  target: RasterImage,
+  options: {
+    reductionTolerance?: number;
+    verificationResolution?: Resolution;
+    weights?: ScoreWeights;
+    renderMode?: RenderMode;
+  } = {}
+) {
+  return MultiLayerReconstructor.reduceLayers(layers, target, options);
 }

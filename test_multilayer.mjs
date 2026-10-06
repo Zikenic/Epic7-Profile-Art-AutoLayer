@@ -2,6 +2,7 @@ import assert from 'node:assert';
 import {
   MultiLayerReconstructor,
   reconstruct,
+  reduceLayers,
   createProjectFromLayers,
   renderLayersToRaster,
   ImageScorer,
@@ -385,4 +386,195 @@ const parsedProject = JSON.parse(serializedJson);
 assert.strictEqual(parsedProject.layers[0].shapeAsset, resA.layers[0].shapeAsset);
 console.log('  Passed: Reconstructed composition fully conforms to .e7profile.json specification!\n');
 
+// ----------------------------------------------------------------------------
+// Test I — Determinism (Repeat Run Bit-for-Bit Identity)
+// ----------------------------------------------------------------------------
+console.log('Test I: Verifying Search Determinism (Repeat Run Bit-for-Bit Identity)...');
+const resI1 = reconstruct(targetA, {
+  maxLayers: 2,
+  minImprovement: 0.005,
+  seed: 42
+});
+const resI2 = reconstruct(targetA, {
+  maxLayers: 2,
+  minImprovement: 0.005,
+  seed: 42
+});
+assert.strictEqual(
+  JSON.stringify(resI1.layers),
+  JSON.stringify(resI2.layers),
+  'Test I failed: layers differed between two identical runs'
+);
+assert.strictEqual(
+  resI1.finalScore.totalLoss,
+  resI2.finalScore.totalLoss,
+  'Test I failed: final loss differed between two identical runs'
+);
+console.log('  Passed: Exact bit-for-bit layer serialization determinism confirmed!\n');
+
+// ----------------------------------------------------------------------------
+// Test J — Strict Layer Improvement (Monotonic Improvement Assertion)
+// ----------------------------------------------------------------------------
+console.log('Test J: Verifying Monotonic Improvement on Accepted Layers...');
+assert(resA.diagnostics.history.length >= 2, 'Test J: expected at least 2 history records');
+for (const record of resA.diagnostics.history) {
+  assert(
+    record.verifiedImprovement >= 0.005,
+    `Test J failed: accepted layer #${record.iteration} had improvement ${record.verifiedImprovement} < threshold 0.005`
+  );
+}
+assert(
+  resA.finalScore.totalLoss < resA.diagnostics.initialScore.totalLoss,
+  'Test J failed: final score is not strictly lower than initial score'
+);
+console.log('  Passed: All accepted layers verified to improve loss by >= threshold!\n');
+
+// ----------------------------------------------------------------------------
+// Test K — Layer-Order Correctness (Stacking Inversion Detection)
+// ----------------------------------------------------------------------------
+console.log('Test K: Verifying Layer-Order Correctness (Stacking Order Detection)...');
+const orderTargetLayers = [
+  {
+    id: 'base-circle',
+    name: 'Red Base Circle',
+    shapeAsset: 'Circle',
+    x: 0.5,
+    y: 0.5,
+    scaleX: 1.0,
+    scaleY: 1.0,
+    rotation: 0,
+    color: '#e43032',
+    opacity: 1.0,
+    visible: true,
+    locked: false,
+    zIndex: 0
+  },
+  {
+    id: 'top-square',
+    name: 'Blue Top Square',
+    shapeAsset: 'Rounded_Square',
+    x: 0.5,
+    y: 0.5,
+    scaleX: 0.5,
+    scaleY: 0.5,
+    rotation: 0,
+    color: '#3f48bb',
+    opacity: 1.0,
+    visible: true,
+    locked: false,
+    zIndex: 1
+  }
+];
+
+const targetK = renderLayersToRaster(orderTargetLayers, 210, 310, {
+  backgroundColor: 'transparent',
+  renderMode: 'mathematical'
+});
+
+// Render correct stack vs inverted stack
+const renderCorrect = renderLayersToRaster(orderTargetLayers, 210, 310, {
+  backgroundColor: 'transparent',
+  renderMode: 'mathematical'
+});
+const invertedLayers = [
+  { ...orderTargetLayers[1], zIndex: 0 },
+  { ...orderTargetLayers[0], zIndex: 1 }
+];
+const renderInverted = renderLayersToRaster(invertedLayers, 210, 310, {
+  backgroundColor: 'transparent',
+  renderMode: 'mathematical'
+});
+
+const scoreCorrect = ImageScorer.score(targetK, renderCorrect);
+const scoreInverted = ImageScorer.score(targetK, renderInverted);
+
+console.log(`  Correct Stack Loss:  ${scoreCorrect.totalLoss.toFixed(4)}`);
+console.log(`  Inverted Stack Loss: ${scoreInverted.totalLoss.toFixed(4)}`);
+assert(scoreCorrect.totalLoss < 0.001, `Correct stack should score near 0: got ${scoreCorrect.totalLoss}`);
+assert(scoreInverted.totalLoss > 0.050, `Inverted stack should score poorly: got ${scoreInverted.totalLoss}`);
+assert(
+  scoreInverted.totalLoss - scoreCorrect.totalLoss > 0.050,
+  'Inversion was not materially penalized by the scorer'
+);
+console.log('  Passed: Renderer and scorer detect layer order differences correctly!\n');
+
+// ----------------------------------------------------------------------------
+// Test L — Explicit Reduction Pass & Bounded Cumulative Drift Safety
+// ----------------------------------------------------------------------------
+console.log('Test L: Verifying Explicit Reduction Pass & Cumulative Drift Safety...');
+const usefulLayer = {
+  id: 'useful-square',
+  name: 'Useful Green Square',
+  shapeAsset: 'Rounded_Square',
+  x: 0.5,
+  y: 0.5,
+  scaleX: 0.8,
+  scaleY: 0.8,
+  rotation: 0,
+  color: '#009432',
+  opacity: 1.0,
+  visible: true,
+  locked: false,
+  zIndex: 1
+};
+
+const duplicateLayer = {
+  ...usefulLayer,
+  id: 'duplicate-square',
+  name: 'Duplicate Green Square',
+  zIndex: 2
+};
+
+const occludedLayer = {
+  id: 'occluded-heart',
+  name: 'Occluded Blue Heart',
+  shapeAsset: 'Heart',
+  x: 0.5,
+  y: 0.5,
+  scaleX: 0.2,
+  scaleY: 0.2,
+  rotation: 0,
+  color: '#3f48bb',
+  opacity: 1.0,
+  visible: true,
+  locked: false,
+  zIndex: 0
+};
+
+// Target is just the single green square
+const targetL = renderLayersToRaster([usefulLayer], 210, 310, {
+  backgroundColor: 'transparent',
+  renderMode: 'mathematical'
+});
+
+// Bloated stack contains occluded heart + useful square + duplicate square
+const bloatedStack = [occludedLayer, usefulLayer, duplicateLayer];
+const initialReductionScore = ImageScorer.score(
+  targetL,
+  renderLayersToRaster(bloatedStack, 210, 310, { backgroundColor: 'transparent', renderMode: 'mathematical' })
+);
+
+const toleranceL = 0.002;
+const reductionOut = reduceLayers(bloatedStack, targetL, {
+  reductionTolerance: toleranceL
+});
+
+console.log(`  Initial Stack Layers: ${bloatedStack.length}`);
+console.log(`  Reduced Stack Layers: ${reductionOut.layers.length}`);
+console.log(`  Pruned Layer Count:   ${reductionOut.prunedCount}`);
+console.log(`  Initial Stack Loss:   ${initialReductionScore.totalLoss.toFixed(4)}`);
+console.log(`  Reduced Stack Loss:   ${reductionOut.score.totalLoss.toFixed(4)}`);
+
+assert(reductionOut.layers.length < bloatedStack.length, 'Reduction failed to prune redundant layers');
+assert.strictEqual(reductionOut.layers.length, 1, `Expected exactly 1 layer after reduction, got ${reductionOut.layers.length}`);
+assert.strictEqual(reductionOut.prunedCount, 2, `Expected 2 layers pruned, got ${reductionOut.prunedCount}`);
+assert.strictEqual(reductionOut.layers[0].shapeAsset, 'Rounded_Square', 'Preserved layer should be Rounded_Square');
+
+// DRIFT SAFETY: Cumulative drift must not exceed tolerance relative to start-of-pass baseline
+const drift = reductionOut.score.totalLoss - initialReductionScore.totalLoss;
+console.log(`  Cumulative Drift:     ${drift.toFixed(6)} (Tolerance: ${toleranceL})`);
+assert(drift <= toleranceL, `Cumulative drift ${drift} exceeded tolerance budget ${toleranceL}`);
+console.log('  Passed: Explicit reduction pruned redundant/occluded layers with strict cumulative drift safety!\n');
+
 console.log('=== ALL MILESTONE 4 MULTI-LAYER RECONSTRUCTION TESTS PASSED SUCCESSFULLY! ===');
+
