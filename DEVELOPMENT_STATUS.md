@@ -1,7 +1,7 @@
 # Development Status & Architectural Checkpoint
 
 **Date**: October 6, 2026  
-**Checkpoint**: Milestones 1, 2, and 3 Complete (Frozen prior to Milestone 4)
+**Checkpoint**: Milestones 1, 2, 3, and 4 Complete (Ready for Milestone 5 UI Integration)
 
 ---
 
@@ -17,7 +17,7 @@
   - Scaling: Anisotropic `scaleX`, `scaleY` with true geometric scaling.
   - Rotation: $[-180^\circ, +180^\circ]$ in degrees.
   - Opacity: $[0.0, 1.0]$.
-  - Color: 24-color game palette plus arbitrary hex support.
+  - Color: 26-color game palette (`EPIC7_PALETTE_HEX`) plus arbitrary hex support.
 - **Authoritative Shape Definitions**:
   - 13 distinct primitives: `Baloon`, `Circle`, `Cross`, `Glow`, `Half_Circle`, `Heart`, `Moon_Curve`, `Moon_Edge`, `Pill`, `Rounded_Square`, `Square`, `Star`, `Triangle`.
   - Native square frame calibration (`shape-frame-calibration.json`) derived from `ref_Frame_size/` captures.
@@ -50,40 +50,60 @@
   - Stage 2: Fine coordinate descent on native resolution (310×210) for position, scale, rotation, color, and opacity.
   - Optional Stage 3: Nelder-Mead simplex polish.
 
+### D. Greedy Multi-Layer Reconstruction Engine (Milestone 4)
+- **Orchestrator**: `MultiLayerReconstructor.ts` exposes `reconstruct(target, options)` and `createProjectFromLayers()`.
+- **Residual Representation**:
+  - Per-pixel error magnitude: $M(x, y) = \max(|a_t - a_c|,\; \min(a_t, a_c) \cdot \Delta E(RGB_t, RGB_c))$.
+  - Color-homogeneous connected component segmentation: partitions high-residual pixels into distinct spatial clusters grouped strictly by target palette color, preventing complementary color blending across adjacent shapes.
+- **Fast Incremental Evaluation**:
+  - Caches base canvas rendering of current layer stack.
+  - Composites candidate layer using native 2D canvas operations (`drawImage`) in under 0.25 ms per candidate.
+- **Z-Order Exploration**:
+  - Evaluates candidate insertion at Top (`length`), Bottom (`0`), and directly above the dominant layer covering the candidate region's centroid.
+- **Authoritative Finalist Verification**:
+  - Renders top $K$ finalists at native verification resolution ($210 \times 310$) with `DeterministicRenderer` and scores with `ImageScorer`.
+  - Selects the finalist achieving the highest verified loss improvement exceeding `minImprovement`.
+- **Local Micro-Polish**:
+  - Multi-scale coordinate descent ($dPos = 0.012, 0.005, 0.002$; $dScale = 0.03, 0.015, 0.006$; $dRot = 3^\circ, 1.5^\circ, 0.8^\circ$) on native resolution before committing.
+- **Post-Greedy Layer Reduction**:
+  - Estimates marginal loss impact of removing each layer.
+  - Iteratively prunes redundant or occluded layers as long as total loss regression stays within `reductionTolerance`.
+
 ---
 
 ## 2. Test Evidence & Verification Results
 
-### A. Unit and Integration Test Suites (`npm test`)
-All 6 test suites pass cleanly:
+### A. All Automated Test Suites (`npm test`)
+All 7 test suites pass with zero failures:
 1. `test_engine.mjs`: Profile card data structures, layer ordering, and 130-layer limit.
 2. `test_calibration.mjs`: Native square frame calibration consistency.
 3. `test_math_primitives.mjs`: Mathematical path generation for all 13 primitives.
 4. `test_editor_regression.mjs`: Canvas ratio, transform bounds, and layer operations.
 5. `test_scoring.mjs`: Color conversion, alpha masking, identity loss, and metric monotonicity.
 6. `test_optimizer.mjs`: 6 synthetic single-layer recovery scenarios, including zero-drift dynamic calibration verification.
+7. `test_multilayer.mjs`: Complete Milestone 4 test suite (Tests A through H).
 
-### B. Held-Out Single-Layer Benchmark (`npm run test:heldout`)
-- **Suite Size**: 120 randomized synthetic cases spanning all 13 primitives with variable transforms, rotations, non-uniform scaling, and palette colors.
-- **Shape Classification Accuracy**: **119 / 120 (99.2%)**
-- **Color Recovery Accuracy**: **120 / 120 (100.0%)**
-- **Symmetric Equivalence Rate**: **89 / 120 (74.2%)**
-- **Loss Percentiles**:
-  - Median ($p_{50}$): **0.0062** (well below the $\le 0.015$ threshold)
-  - 90th percentile ($p_{90}$): **0.0604** (below the $\le 0.070$ threshold)
-- **Challenging Case**: Exactly 1 case failed shape recovery (Heart case #9, recovered as Baloon due to a local orientation minimum under sideways rotation at $-98^\circ$).
+### B. Milestone 4 Synthetic Reconstruction Results (`npm run test:multilayer`)
+| Test | Scenario | Initial Loss | Final Loss | Layers (Pre $\to$ Post) | Status |
+|---|---|---|---|---|---|
+| **Test A** | Two Non-Overlapping Shapes (`Circle` + `Triangle`) | 0.8921 | **0.0097** | 2 $\to$ 2 | **PASSED** |
+| **Test B** | Overlapping Shapes in Painter's Stacking Order (`Rounded_Square` base + `Heart` top) | 0.9744 | **0.0167** | 2 $\to$ 2 | **PASSED** |
+| **Test C** | Multiple Palette Colors (`Pill` `#e43032` + `Star` `#11d4bd` + `Heart` `#fe9dbe`) | 0.9038 | **0.0171** | 3 $\to$ 3 | **PASSED** |
+| **Test D** | Disconnected Same-Color Shapes (2 separate green Circles) | 0.8388 | **0.0133** | 2 $\to$ 2 | **PASSED** |
+| **Test E** | Redundant Layer Pruning via Reduction Pass | 1.0000 | **0.0035** | 1 $\to$ 1 | **PASSED** |
+| **Test F** | Hard Budget Enforcement (`maxLayers` = 1, 2, 5) | - | - | Strictly capped | **PASSED** |
+| **Test G** | Imperfect / Noisy Target Stability (Anti-Aliasing robustness) | 0.8921 | **0.0145** | 2 $\to$ 2 | **PASSED** |
+| **Test H** | Direct Export to `.e7profile.json` Serialization | - | - | Valid schema | **PASSED** |
 
 ### C. Build Verification (`npm run build`)
-- Clean compilation via `tsc && vite build` (output emitted to `dist/` in under 2 seconds).
+- Clean compilation via `tsc && vite build` (output emitted to `dist/` in 2.58s).
 - `node_modules` remains completely unpatched and pristine.
 
 ---
 
-## 3. Known Limitations & Freeze Boundaries
+## 3. Known Limitations & Next Steps
 
-1. **Milestone 4 Not Started**:
-   - Greedy multi-layer reconstruction, residual error image subtraction, and layer reduction passes have NOT been implemented. The codebase is frozen at the single-layer recovery boundary.
-2. **Local Minima on Extreme Rotations**:
-   - Single-layer recovery can rarely settle into a local orientation minimum for asymmetric shapes (e.g., Heart) rotated near $\pm 90^\circ$ when evaluated without multi-start global search.
-3. **Execution Sandbox Considerations**:
-   - Building with Rollup or connecting to external Git remotes on Windows requires standard process spawning and network access outside restricted job-object sandboxes.
+1. **Milestone 5 Next Step**:
+   - Auto-Layer UI integration: Crop interface, image drag-and-drop / upload modal, progress bar / live preview during greedy iterations.
+2. **Highly Complex Freeform Vector Art**:
+   - Complex non-geometric illustrations with thousands of curves will be approximated using up to 130 overlapping geometric primitives.

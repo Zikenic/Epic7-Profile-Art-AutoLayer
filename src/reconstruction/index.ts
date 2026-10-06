@@ -5,3 +5,5 @@ export * from './ImageScorer.ts';
 export * from './HeadlessRenderer.ts';
 export * from './Symmetry.ts';
 export * from './SingleLayerOptimizer.ts';
+export * from './ResidualAnalyzer.ts';
+export * from './MultiLayerReconstructor.ts';

@@ -20,6 +20,7 @@ if (typeof window === 'undefined' && typeof document === 'undefined') {
  */
 export interface HeadlessCanvasInstance {
   ctx: CanvasRenderingContext2D;
+  canvas: any;
   getImageData(): RasterImage;
 }
 
@@ -34,6 +35,7 @@ export function createHeadlessCanvas(width: number, height: number): HeadlessCan
     const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
     return {
       ctx,
+      canvas,
       getImageData: () => {
         const img = ctx.getImageData(0, 0, width, height);
         return {
@@ -51,6 +53,7 @@ export function createHeadlessCanvas(width: number, height: number): HeadlessCan
     const ctx = canvas.getContext('2d', { willReadFrequently: true }) as unknown as CanvasRenderingContext2D;
     return {
       ctx,
+      canvas,
       getImageData: () => {
         const img = ctx.getImageData(0, 0, width, height);
         return {
@@ -70,6 +73,7 @@ export function createHeadlessCanvas(width: number, height: number): HeadlessCan
     const ctx = canvas.getContext('2d', { willReadFrequently: true }) as CanvasRenderingContext2D;
     return {
       ctx,
+      canvas,
       getImageData: () => {
         const img = ctx.getImageData(0, 0, width, height);
         return {

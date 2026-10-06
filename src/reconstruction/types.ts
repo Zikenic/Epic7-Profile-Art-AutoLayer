@@ -1,4 +1,5 @@
 import type { Layer } from '../core/types.ts';
+import type { RenderMode } from '../core/Renderer.ts';
 
 /**
  * Deterministic RGBA pixel buffer representation for headless rendering and scoring.
@@ -106,3 +107,78 @@ export const EPIC7_PALETTE_HEX: readonly string[] = [
   // Color_Palette_2 (5 colors)
   '#eba27f', '#fae6e1', '#ff35c2', '#4cfdff', '#68ff4c'
 ] as const;
+
+export interface Resolution {
+  width: number;
+  height: number;
+}
+
+/**
+ * Configuration options for greedy multi-layer reconstruction.
+ */
+export interface ReconstructionOptions {
+  maxLayers?: number;                  // Hard maximum layer budget (default 130)
+  minImprovement?: number;             // Minimum verified loss reduction required to accept a layer (default 0.003)
+  searchResolution?: Resolution;       // Low resolution for fast candidate generation & ranking (default 105x155)
+  verificationResolution?: Resolution; // Authoritative resolution for finalist verification (default 210x310)
+  enablePolish?: boolean;              // Coordinate refinement on accepted layers (default true)
+  refinementInterval?: number;         // Periodic interval (every N layers) to refine recent layers (default 4, 0 = disabled)
+  reductionEnabled?: boolean;          // Post-reconstruction layer pruning pass (default true)
+  reductionTolerance?: number;         // Acceptable total loss regression when pruning a layer (default 0.002)
+  seed?: number;                       // Seed for deterministic tie-breaking and ordering (default 42)
+  timeoutMs?: number;                  // Maximum total reconstruction time in ms (default 60000)
+  topKFinalists?: number;              // Number of search finalists to verify authoritatively (default 4)
+  allowedPrimitives?: string[];        // Allowed primitive shape IDs
+  weights?: ScoreWeights;              // Custom score weights (defaults to DEFAULT_SCORE_WEIGHTS)
+  renderMode?: RenderMode;             // Deterministic render mode (default 'mathematical')
+  saveDebugSnapshots?: boolean;        // Optional flag to capture intermediate iteration images
+  onProgress?: (progress: ReconstructionProgress) => void;
+}
+
+export interface AcceptedLayerRecord {
+  iteration: number;
+  shapeAsset: string;
+  color: string;
+  x: number;
+  y: number;
+  scaleX: number;
+  scaleY: number;
+  rotation: number;
+  opacity: number;
+  zIndex: number;
+  fastImprovement: number;
+  verifiedImprovement: number;
+  elapsedMs: number;
+}
+
+export interface ReconstructionDiagnostics {
+  configHash: string;
+  totalElapsedMs: number;
+  fastCandidatesEvaluated: number;
+  finalistsEvaluated: number;
+  authoritativeRenders: number;
+  acceptedLayersCount: number;
+  rejectedCandidatesCount: number;
+  reductionLayersRemoved: number;
+  layersBeforeReduction: number;
+  layersAfterReduction: number;
+  initialScore: ScoreResult;
+  finalScore: ScoreResult;
+  history: AcceptedLayerRecord[];
+  stopReason: 'max_layers' | 'no_improvement' | 'timeout' | 'target_matched';
+}
+
+export interface ReconstructionResult {
+  layers: Layer[];
+  finalScore: ScoreResult;
+  diagnostics: ReconstructionDiagnostics;
+}
+
+export interface ReconstructionProgress {
+  iteration: number;
+  currentLayerCount: number;
+  currentScore: ScoreResult;
+  lastImprovement: number;
+  elapsedMs: number;
+}
+
