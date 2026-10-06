@@ -1,0 +1,1427 @@
+{
+  "version": 1,
+  "description": "Epic Seven Profile Art Shape & Palette Calibration Database (Phase 2A)",
+  "generatedAt": "2026-10-05T17:00:00.000Z",
+  "shapes": {
+    "Baloon": {
+      "assetId": "Baloon",
+      "filename": "Baloon.png",
+      "sourceWidth": 470,
+      "sourceHeight": 407,
+      "alphaThreshold": 2,
+      "foregroundBounds": {
+        "minX": 92,
+        "minY": 48,
+        "maxX": 370,
+        "maxY": 404,
+        "width": 279,
+        "height": 357
+      },
+      "padding": {
+        "left": 92,
+        "right": 99,
+        "top": 48,
+        "bottom": 2,
+        "normLeft": 0.1957,
+        "normRight": 0.2106,
+        "normTop": 0.1179,
+        "normBottom": 0.0049
+      },
+      "centers": {
+        "image": {
+          "x": 235.0,
+          "y": 203.5
+        },
+        "foregroundBBox": {
+          "x": 231.0,
+          "y": 226.0
+        },
+        "alphaCentroid": {
+          "x": 230.75,
+          "y": 209.54
+        },
+        "offsetBBoxFromImage": {
+          "x": -4.0,
+          "y": 22.5
+        },
+        "offsetCentroidFromImage": {
+          "x": -4.25,
+          "y": 6.04
+        }
+      },
+      "symmetry": {
+        "horizontal": 99.64,
+        "vertical": 78.49
+      },
+      "pixels": {
+        "opaque": 69654,
+        "partial": 3431,
+        "transparent": 118205,
+        "total": 191290,
+        "percentOpaque": 36.41,
+        "percentPartial": 1.79,
+        "percentTransparent": 61.79
+      },
+      "candidatePrimitive": {
+        "cx": 231.0,
+        "cy": 226.0,
+        "type": "custom_bezier",
+        "width": 279,
+        "height": 357
+      },
+      "analyzedAt": "2026-10-05T17:00:00.000Z"
+    },
+    "Circle": {
+      "assetId": "Circle",
+      "filename": "Circle.png",
+      "sourceWidth": 505,
+      "sourceHeight": 484,
+      "alphaThreshold": 2,
+      "foregroundBounds": {
+        "minX": 74,
+        "minY": 84,
+        "maxX": 433,
+        "maxY": 443,
+        "width": 360,
+        "height": 360
+      },
+      "padding": {
+        "left": 74,
+        "right": 71,
+        "top": 84,
+        "bottom": 40,
+        "normLeft": 0.1465,
+        "normRight": 0.1406,
+        "normTop": 0.1736,
+        "normBottom": 0.0826
+      },
+      "centers": {
+        "image": {
+          "x": 252.5,
+          "y": 242.0
+        },
+        "foregroundBBox": {
+          "x": 253.5,
+          "y": 263.5
+        },
+        "alphaCentroid": {
+          "x": 253.5,
+          "y": 263.95
+        },
+        "offsetBBoxFromImage": {
+          "x": 1.0,
+          "y": 21.5
+        },
+        "offsetCentroidFromImage": {
+          "x": 1.0,
+          "y": 21.95
+        }
+      },
+      "symmetry": {
+        "horizontal": 100.0,
+        "vertical": 99.49
+      },
+      "pixels": {
+        "opaque": 99955,
+        "partial": 3587,
+        "transparent": 140878,
+        "total": 244420,
+        "percentOpaque": 40.89,
+        "percentPartial": 1.47,
+        "percentTransparent": 57.64
+      },
+      "candidatePrimitive": {
+        "cx": 253.5,
+        "cy": 263.5,
+        "type": "circle",
+        "radius": 180.0,
+        "radiusX": 180.0,
+        "radiusY": 180.0
+      },
+      "analyzedAt": "2026-10-05T17:00:00.000Z"
+    },
+    "Glow": {
+      "assetId": "Glow",
+      "filename": "Glow.png",
+      "sourceWidth": 490,
+      "sourceHeight": 475,
+      "alphaThreshold": 2,
+      "foregroundBounds": {
+        "minX": 82,
+        "minY": 89,
+        "maxX": 412,
+        "maxY": 419,
+        "width": 331,
+        "height": 331
+      },
+      "padding": {
+        "left": 82,
+        "right": 77,
+        "top": 89,
+        "bottom": 55,
+        "normLeft": 0.1673,
+        "normRight": 0.1571,
+        "normTop": 0.1874,
+        "normBottom": 0.1158
+      },
+      "centers": {
+        "image": {
+          "x": 245.0,
+          "y": 237.5
+        },
+        "foregroundBBox": {
+          "x": 247.0,
+          "y": 254.0
+        },
+        "alphaCentroid": {
+          "x": 246.28,
+          "y": 254.72
+        },
+        "offsetBBoxFromImage": {
+          "x": 2.0,
+          "y": 16.5
+        },
+        "offsetCentroidFromImage": {
+          "x": 1.28,
+          "y": 17.22
+        }
+      },
+      "symmetry": {
+        "horizontal": 99.56,
+        "vertical": 99.57
+      },
+      "pixels": {
+        "opaque": 0,
+        "partial": 85424,
+        "transparent": 147326,
+        "total": 232750,
+        "percentOpaque": 0.0,
+        "percentPartial": 36.7,
+        "percentTransparent": 63.3
+      },
+      "candidatePrimitive": {
+        "cx": 246.28,
+        "cy": 254.72,
+        "type": "radial_glow",
+        "radius": 165.5,
+        "falloff": "cosine"
+      },
+      "analyzedAt": "2026-10-05T17:00:00.000Z"
+    },
+    "Half_Circle": {
+      "assetId": "Half_Circle",
+      "filename": "Half_Circle.png",
+      "sourceWidth": 490,
+      "sourceHeight": 302,
+      "alphaThreshold": 2,
+      "foregroundBounds": {
+        "minX": 71,
+        "minY": 61,
+        "maxX": 430,
+        "maxY": 242,
+        "width": 360,
+        "height": 182
+      },
+      "padding": {
+        "left": 71,
+        "right": 59,
+        "top": 61,
+        "bottom": 59,
+        "normLeft": 0.1449,
+        "normRight": 0.1204,
+        "normTop": 0.202,
+        "normBottom": 0.1954
+      },
+      "centers": {
+        "image": {
+          "x": 245.0,
+          "y": 151.0
+        },
+        "foregroundBBox": {
+          "x": 250.5,
+          "y": 151.5
+        },
+        "alphaCentroid": {
+          "x": 250.39,
+          "y": 165.34
+        },
+        "offsetBBoxFromImage": {
+          "x": 5.5,
+          "y": 0.5
+        },
+        "offsetCentroidFromImage": {
+          "x": 5.39,
+          "y": 14.34
+        }
+      },
+      "symmetry": {
+        "horizontal": 99.88,
+        "vertical": 65.72
+      },
+      "pixels": {
+        "opaque": 49296,
+        "partial": 2765,
+        "transparent": 95919,
+        "total": 147980,
+        "percentOpaque": 33.31,
+        "percentPartial": 1.87,
+        "percentTransparent": 64.82
+      },
+      "candidatePrimitive": {
+        "cx": 250.5,
+        "cy": 151.5,
+        "type": "semicircle",
+        "radius": 180.0,
+        "flatEdge": "bottom"
+      },
+      "analyzedAt": "2026-10-05T17:00:00.000Z"
+    },
+    "Heart": {
+      "assetId": "Heart",
+      "filename": "Heart.png",
+      "sourceWidth": 460,
+      "sourceHeight": 480,
+      "alphaThreshold": 2,
+      "foregroundBounds": {
+        "minX": 38,
+        "minY": 83,
+        "maxX": 418,
+        "maxY": 439,
+        "width": 381,
+        "height": 357
+      },
+      "padding": {
+        "left": 38,
+        "right": 41,
+        "top": 83,
+        "bottom": 40,
+        "normLeft": 0.0826,
+        "normRight": 0.0891,
+        "normTop": 0.1729,
+        "normBottom": 0.0833
+      },
+      "centers": {
+        "image": {
+          "x": 230.0,
+          "y": 240.0
+        },
+        "foregroundBBox": {
+          "x": 228.0,
+          "y": 261.0
+        },
+        "alphaCentroid": {
+          "x": 227.75,
+          "y": 238.63
+        },
+        "offsetBBoxFromImage": {
+          "x": -2.0,
+          "y": 21.0
+        },
+        "offsetCentroidFromImage": {
+          "x": -2.25,
+          "y": -1.37
+        }
+      },
+      "symmetry": {
+        "horizontal": 99.6,
+        "vertical": 64.34
+      },
+      "pixels": {
+        "opaque": 95474,
+        "partial": 4154,
+        "transparent": 121172,
+        "total": 220800,
+        "percentOpaque": 43.24,
+        "percentPartial": 1.88,
+        "percentTransparent": 54.88
+      },
+      "candidatePrimitive": {
+        "cx": 228.0,
+        "cy": 261.0,
+        "type": "heart_bezier",
+        "width": 381,
+        "height": 357
+      },
+      "analyzedAt": "2026-10-05T17:00:00.000Z"
+    },
+    "Moon_Curve": {
+      "assetId": "Moon_Curve",
+      "filename": "Moon_Curve.png",
+      "sourceWidth": 496,
+      "sourceHeight": 206,
+      "alphaThreshold": 2,
+      "foregroundBounds": {
+        "minX": 41,
+        "minY": 59,
+        "maxX": 398,
+        "maxY": 133,
+        "width": 358,
+        "height": 75
+      },
+      "padding": {
+        "left": 41,
+        "right": 97,
+        "top": 59,
+        "bottom": 72,
+        "normLeft": 0.0827,
+        "normRight": 0.1956,
+        "normTop": 0.2864,
+        "normBottom": 0.3495
+      },
+      "centers": {
+        "image": {
+          "x": 248.0,
+          "y": 103.0
+        },
+        "foregroundBBox": {
+          "x": 219.5,
+          "y": 96.0
+        },
+        "alphaCentroid": {
+          "x": 220.36,
+          "y": 108.99
+        },
+        "offsetBBoxFromImage": {
+          "x": -28.5,
+          "y": -7.0
+        },
+        "offsetCentroidFromImage": {
+          "x": -27.64,
+          "y": 5.99
+        }
+      },
+      "symmetry": {
+        "horizontal": 98.67,
+        "vertical": 55.75
+      },
+      "pixels": {
+        "opaque": 5243,
+        "partial": 2849,
+        "transparent": 94084,
+        "total": 102176,
+        "percentOpaque": 5.13,
+        "percentPartial": 2.79,
+        "percentTransparent": 92.08
+      },
+      "candidatePrimitive": {
+        "cx": 219.5,
+        "cy": 96.0,
+        "type": "custom_bezier",
+        "width": 358,
+        "height": 75
+      },
+      "analyzedAt": "2026-10-05T17:00:00.000Z"
+    },
+    "Moon_Edge": {
+      "assetId": "Moon_Edge",
+      "filename": "Moon_Edge.png",
+      "sourceWidth": 358,
+      "sourceHeight": 453,
+      "alphaThreshold": 2,
+      "foregroundBounds": {
+        "minX": 75,
+        "minY": 46,
+        "maxX": 279,
+        "maxY": 401,
+        "width": 205,
+        "height": 356
+      },
+      "padding": {
+        "left": 75,
+        "right": 78,
+        "top": 46,
+        "bottom": 51,
+        "normLeft": 0.2095,
+        "normRight": 0.2179,
+        "normTop": 0.1015,
+        "normBottom": 0.1126
+      },
+      "centers": {
+        "image": {
+          "x": 179.0,
+          "y": 226.5
+        },
+        "foregroundBBox": {
+          "x": 177.0,
+          "y": 223.5
+        },
+        "alphaCentroid": {
+          "x": 140.66,
+          "y": 302.34
+        },
+        "offsetBBoxFromImage": {
+          "x": -2.0,
+          "y": -3.0
+        },
+        "offsetCentroidFromImage": {
+          "x": -38.34,
+          "y": 75.84
+        }
+      },
+      "symmetry": {
+        "horizontal": 71.37,
+        "vertical": 64.83
+      },
+      "pixels": {
+        "opaque": 13631,
+        "partial": 2750,
+        "transparent": 145793,
+        "total": 162174,
+        "percentOpaque": 8.41,
+        "percentPartial": 1.7,
+        "percentTransparent": 89.9
+      },
+      "candidatePrimitive": {
+        "cx": 177.0,
+        "cy": 223.5,
+        "type": "custom_bezier",
+        "width": 205,
+        "height": 356
+      },
+      "analyzedAt": "2026-10-05T17:00:00.000Z"
+    },
+    "Pill": {
+      "assetId": "Pill",
+      "filename": "Pill.png",
+      "sourceWidth": 471,
+      "sourceHeight": 231,
+      "alphaThreshold": 2,
+      "foregroundBounds": {
+        "minX": 56,
+        "minY": 55,
+        "maxX": 415,
+        "maxY": 194,
+        "width": 360,
+        "height": 140
+      },
+      "padding": {
+        "left": 56,
+        "right": 55,
+        "top": 55,
+        "bottom": 36,
+        "normLeft": 0.1189,
+        "normRight": 0.1168,
+        "normTop": 0.2381,
+        "normBottom": 0.1558
+      },
+      "centers": {
+        "image": {
+          "x": 235.5,
+          "y": 115.5
+        },
+        "foregroundBBox": {
+          "x": 235.5,
+          "y": 124.5
+        },
+        "alphaCentroid": {
+          "x": 235.5,
+          "y": 124.53
+        },
+        "offsetBBoxFromImage": {
+          "x": 0.0,
+          "y": 9.0
+        },
+        "offsetCentroidFromImage": {
+          "x": -0.0,
+          "y": 9.03
+        }
+      },
+      "symmetry": {
+        "horizontal": 100.0,
+        "vertical": 99.88
+      },
+      "pixels": {
+        "opaque": 44438,
+        "partial": 2350,
+        "transparent": 62013,
+        "total": 108801,
+        "percentOpaque": 40.84,
+        "percentPartial": 2.16,
+        "percentTransparent": 57.0
+      },
+      "candidatePrimitive": {
+        "cx": 235.5,
+        "cy": 124.5,
+        "type": "capsule",
+        "width": 360,
+        "height": 140
+      },
+      "analyzedAt": "2026-10-05T17:00:00.000Z"
+    },
+    "Rounded_Square": {
+      "assetId": "Rounded_Square",
+      "filename": "Rounded_Square.png",
+      "sourceWidth": 424,
+      "sourceHeight": 409,
+      "alphaThreshold": 2,
+      "foregroundBounds": {
+        "minX": 43,
+        "minY": 48,
+        "maxX": 366,
+        "maxY": 371,
+        "width": 324,
+        "height": 324
+      },
+      "padding": {
+        "left": 43,
+        "right": 57,
+        "top": 48,
+        "bottom": 37,
+        "normLeft": 0.1014,
+        "normRight": 0.1344,
+        "normTop": 0.1174,
+        "normBottom": 0.0905
+      },
+      "centers": {
+        "image": {
+          "x": 212.0,
+          "y": 204.5
+        },
+        "foregroundBBox": {
+          "x": 204.5,
+          "y": 209.5
+        },
+        "alphaCentroid": {
+          "x": 204.5,
+          "y": 209.58
+        },
+        "offsetBBoxFromImage": {
+          "x": -7.5,
+          "y": 5.0
+        },
+        "offsetCentroidFromImage": {
+          "x": -7.5,
+          "y": 5.08
+        }
+      },
+      "symmetry": {
+        "horizontal": 100.0,
+        "vertical": 99.9
+      },
+      "pixels": {
+        "opaque": 103732,
+        "partial": 664,
+        "transparent": 69020,
+        "total": 173416,
+        "percentOpaque": 59.82,
+        "percentPartial": 0.38,
+        "percentTransparent": 39.8
+      },
+      "candidatePrimitive": {
+        "cx": 204.5,
+        "cy": 209.5,
+        "type": "rounded_rect",
+        "width": 324,
+        "height": 324,
+        "cornerRadius": 27
+      },
+      "analyzedAt": "2026-10-05T17:00:00.000Z"
+    },
+    "Star": {
+      "assetId": "Star",
+      "filename": "Star.png",
+      "sourceWidth": 443,
+      "sourceHeight": 452,
+      "alphaThreshold": 2,
+      "foregroundBounds": {
+        "minX": 49,
+        "minY": 68,
+        "maxX": 407,
+        "maxY": 410,
+        "width": 359,
+        "height": 343
+      },
+      "padding": {
+        "left": 49,
+        "right": 35,
+        "top": 68,
+        "bottom": 41,
+        "normLeft": 0.1106,
+        "normRight": 0.079,
+        "normTop": 0.1504,
+        "normBottom": 0.0907
+      },
+      "centers": {
+        "image": {
+          "x": 221.5,
+          "y": 226.0
+        },
+        "foregroundBBox": {
+          "x": 228.0,
+          "y": 239.0
+        },
+        "alphaCentroid": {
+          "x": 228.2,
+          "y": 256.86
+        },
+        "offsetBBoxFromImage": {
+          "x": 6.5,
+          "y": 13.0
+        },
+        "offsetCentroidFromImage": {
+          "x": 6.7,
+          "y": 30.86
+        }
+      },
+      "symmetry": {
+        "horizontal": 99.72,
+        "vertical": 69.72
+      },
+      "pixels": {
+        "opaque": 49501,
+        "partial": 4245,
+        "transparent": 146490,
+        "total": 200236,
+        "percentOpaque": 24.72,
+        "percentPartial": 2.12,
+        "percentTransparent": 73.16
+      },
+      "candidatePrimitive": {
+        "cx": 228.0,
+        "cy": 239.0,
+        "type": "star_10",
+        "outerRadius": 179.5,
+        "innerRadius": 78.98
+      },
+      "analyzedAt": "2026-10-05T17:00:00.000Z"
+    },
+    "Triangle": {
+      "assetId": "Triangle",
+      "filename": "Triangle.png",
+      "sourceWidth": 499,
+      "sourceHeight": 470,
+      "alphaThreshold": 2,
+      "foregroundBounds": {
+        "minX": 54,
+        "minY": 76,
+        "maxX": 452,
+        "maxY": 426,
+        "width": 399,
+        "height": 351
+      },
+      "padding": {
+        "left": 54,
+        "right": 46,
+        "top": 76,
+        "bottom": 43,
+        "normLeft": 0.1082,
+        "normRight": 0.0922,
+        "normTop": 0.1617,
+        "normBottom": 0.0915
+      },
+      "centers": {
+        "image": {
+          "x": 249.5,
+          "y": 235.0
+        },
+        "foregroundBBox": {
+          "x": 253.0,
+          "y": 251.0
+        },
+        "alphaCentroid": {
+          "x": 253.5,
+          "y": 309.01
+        },
+        "offsetBBoxFromImage": {
+          "x": 3.5,
+          "y": 16.0
+        },
+        "offsetCentroidFromImage": {
+          "x": 4.0,
+          "y": 74.01
+        }
+      },
+      "symmetry": {
+        "horizontal": 99.5,
+        "vertical": 50.36
+      },
+      "pixels": {
+        "opaque": 67992,
+        "partial": 3542,
+        "transparent": 162996,
+        "total": 234530,
+        "percentOpaque": 28.99,
+        "percentPartial": 1.51,
+        "percentTransparent": 69.5
+      },
+      "candidatePrimitive": {
+        "cx": 253.0,
+        "cy": 251.0,
+        "type": "polygon_triangle",
+        "width": 399,
+        "height": 351
+      },
+      "analyzedAt": "2026-10-05T17:00:00.000Z"
+    },
+    "Cross": {
+      "assetId": "Cross",
+      "filename": "Cross.png",
+      "sourceWidth": 500,
+      "sourceHeight": 500,
+      "alphaThreshold": 2,
+      "foregroundBounds": {
+        "minX": 30,
+        "minY": 30,
+        "maxX": 469,
+        "maxY": 468,
+        "width": 440,
+        "height": 439
+      },
+      "padding": {
+        "left": 30,
+        "right": 30,
+        "top": 30,
+        "bottom": 31,
+        "normLeft": 0.06,
+        "normRight": 0.06,
+        "normTop": 0.06,
+        "normBottom": 0.062
+      },
+      "centers": {
+        "image": {
+          "x": 250.0,
+          "y": 250.0
+        },
+        "foregroundBBox": {
+          "x": 250.0,
+          "y": 250.0
+        },
+        "alphaCentroid": {
+          "x": 250.0,
+          "y": 250.0
+        },
+        "offsetBBoxFromImage": {
+          "x": 0.0,
+          "y": 0.0
+        },
+        "offsetCentroidFromImage": {
+          "x": 0.0,
+          "y": 0.0
+        }
+      },
+      "symmetry": {
+        "horizontal": 100.0,
+        "vertical": 99.99
+      },
+      "candidatePrimitive": {
+        "cx": 250.0,
+        "cy": 250.0,
+        "type": "vector_path",
+        "width": 440,
+        "height": 439
+      },
+      "fitMetrics": {
+        "assetIoU": 0.988,
+        "geomIoU": 0.988,
+        "mae": 0.005,
+        "boundaryErrorPx": 1.15
+      }
+    }
+  },
+  "palettes": {
+    "Color_Palette_1": {
+      "filename": "Color_Palette_1.png",
+      "dimensions": {
+        "width": 635,
+        "height": 251
+      },
+      "grid": {
+        "rows": 3,
+        "cols": 7,
+        "swatchSize": 60,
+        "pitch": 90
+      },
+      "colorCount": 21,
+      "colors": [
+        {
+          "palette": "Color_Palette_1",
+          "row": 0,
+          "col": 0,
+          "index": 0,
+          "hex": "#000000",
+          "rgb": {
+            "r": 0,
+            "g": 0,
+            "b": 0
+          },
+          "hsv": {
+            "h": 0.0,
+            "s": 0.0,
+            "v": 0.0
+          },
+          "hsl": {
+            "h": 0.0,
+            "s": 0.0,
+            "l": 0.0
+          }
+        },
+        {
+          "palette": "Color_Palette_1",
+          "row": 0,
+          "col": 1,
+          "index": 1,
+          "hex": "#586a8b",
+          "rgb": {
+            "r": 88,
+            "g": 106,
+            "b": 139
+          },
+          "hsv": {
+            "h": 218.8,
+            "s": 36.7,
+            "v": 54.5
+          },
+          "hsl": {
+            "h": 218.8,
+            "s": 22.5,
+            "l": 44.5
+          }
+        },
+        {
+          "palette": "Color_Palette_1",
+          "row": 0,
+          "col": 2,
+          "index": 2,
+          "hex": "#fe9dbe",
+          "rgb": {
+            "r": 254,
+            "g": 157,
+            "b": 190
+          },
+          "hsv": {
+            "h": 339.6,
+            "s": 38.2,
+            "v": 99.6
+          },
+          "hsl": {
+            "h": 339.6,
+            "s": 98.0,
+            "l": 80.6
+          }
+        },
+        {
+          "palette": "Color_Palette_1",
+          "row": 0,
+          "col": 3,
+          "index": 3,
+          "hex": "#e43032",
+          "rgb": {
+            "r": 228,
+            "g": 48,
+            "b": 50
+          },
+          "hsv": {
+            "h": 359.3,
+            "s": 78.9,
+            "v": 89.4
+          },
+          "hsl": {
+            "h": 359.3,
+            "s": 76.9,
+            "l": 54.1
+          }
+        },
+        {
+          "palette": "Color_Palette_1",
+          "row": 0,
+          "col": 4,
+          "index": 4,
+          "hex": "#fff355",
+          "rgb": {
+            "r": 255,
+            "g": 243,
+            "b": 85
+          },
+          "hsv": {
+            "h": 55.8,
+            "s": 66.7,
+            "v": 100.0
+          },
+          "hsl": {
+            "h": 55.8,
+            "s": 100.0,
+            "l": 66.7
+          }
+        },
+        {
+          "palette": "Color_Palette_1",
+          "row": 0,
+          "col": 5,
+          "index": 5,
+          "hex": "#11d4bd",
+          "rgb": {
+            "r": 17,
+            "g": 212,
+            "b": 189
+          },
+          "hsv": {
+            "h": 172.9,
+            "s": 92.0,
+            "v": 83.1
+          },
+          "hsl": {
+            "h": 172.9,
+            "s": 85.2,
+            "l": 44.9
+          }
+        },
+        {
+          "palette": "Color_Palette_1",
+          "row": 0,
+          "col": 6,
+          "index": 6,
+          "hex": "#3f48bb",
+          "rgb": {
+            "r": 63,
+            "g": 72,
+            "b": 187
+          },
+          "hsv": {
+            "h": 235.6,
+            "s": 66.3,
+            "v": 73.3
+          },
+          "hsl": {
+            "h": 235.6,
+            "s": 49.6,
+            "l": 49.0
+          }
+        },
+        {
+          "palette": "Color_Palette_1",
+          "row": 1,
+          "col": 0,
+          "index": 7,
+          "hex": "#ffffff",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "hsv": {
+            "h": 0.0,
+            "s": 0.0,
+            "v": 100.0
+          },
+          "hsl": {
+            "h": 0.0,
+            "s": 0.0,
+            "l": 100.0
+          }
+        },
+        {
+          "palette": "Color_Palette_1",
+          "row": 1,
+          "col": 1,
+          "index": 8,
+          "hex": "#8649d6",
+          "rgb": {
+            "r": 134,
+            "g": 73,
+            "b": 214
+          },
+          "hsv": {
+            "h": 266.0,
+            "s": 65.9,
+            "v": 83.9
+          },
+          "hsl": {
+            "h": 266.0,
+            "s": 63.2,
+            "l": 56.3
+          }
+        },
+        {
+          "palette": "Color_Palette_1",
+          "row": 1,
+          "col": 2,
+          "index": 9,
+          "hex": "#ff65bb",
+          "rgb": {
+            "r": 255,
+            "g": 101,
+            "b": 187
+          },
+          "hsv": {
+            "h": 326.5,
+            "s": 60.4,
+            "v": 100.0
+          },
+          "hsl": {
+            "h": 326.5,
+            "s": 100.0,
+            "l": 69.8
+          }
+        },
+        {
+          "palette": "Color_Palette_1",
+          "row": 1,
+          "col": 3,
+          "index": 10,
+          "hex": "#fb983b",
+          "rgb": {
+            "r": 251,
+            "g": 152,
+            "b": 59
+          },
+          "hsv": {
+            "h": 29.1,
+            "s": 76.5,
+            "v": 98.4
+          },
+          "hsl": {
+            "h": 29.1,
+            "s": 96.0,
+            "l": 60.8
+          }
+        },
+        {
+          "palette": "Color_Palette_1",
+          "row": 1,
+          "col": 4,
+          "index": 11,
+          "hex": "#c4e437",
+          "rgb": {
+            "r": 196,
+            "g": 228,
+            "b": 55
+          },
+          "hsv": {
+            "h": 71.1,
+            "s": 75.9,
+            "v": 89.4
+          },
+          "hsl": {
+            "h": 71.1,
+            "s": 76.2,
+            "l": 55.5
+          }
+        },
+        {
+          "palette": "Color_Palette_1",
+          "row": 1,
+          "col": 5,
+          "index": 12,
+          "hex": "#26cbf8",
+          "rgb": {
+            "r": 38,
+            "g": 203,
+            "b": 248
+          },
+          "hsv": {
+            "h": 192.9,
+            "s": 84.7,
+            "v": 97.3
+          },
+          "hsl": {
+            "h": 192.9,
+            "s": 93.8,
+            "l": 56.1
+          }
+        },
+        {
+          "palette": "Color_Palette_1",
+          "row": 1,
+          "col": 6,
+          "index": 13,
+          "hex": "#99cdff",
+          "rgb": {
+            "r": 153,
+            "g": 205,
+            "b": 255
+          },
+          "hsv": {
+            "h": 209.4,
+            "s": 40.0,
+            "v": 100.0
+          },
+          "hsl": {
+            "h": 209.4,
+            "s": 100.0,
+            "l": 80.0
+          }
+        },
+        {
+          "palette": "Color_Palette_1",
+          "row": 2,
+          "col": 0,
+          "index": 14,
+          "hex": "#a0a0a0",
+          "rgb": {
+            "r": 160,
+            "g": 160,
+            "b": 160
+          },
+          "hsv": {
+            "h": 0.0,
+            "s": 0.0,
+            "v": 62.7
+          },
+          "hsl": {
+            "h": 0.0,
+            "s": 0.0,
+            "l": 62.7
+          }
+        },
+        {
+          "palette": "Color_Palette_1",
+          "row": 2,
+          "col": 1,
+          "index": 15,
+          "hex": "#da80fb",
+          "rgb": {
+            "r": 218,
+            "g": 128,
+            "b": 251
+          },
+          "hsv": {
+            "h": 283.9,
+            "s": 49.0,
+            "v": 98.4
+          },
+          "hsl": {
+            "h": 283.9,
+            "s": 93.9,
+            "l": 74.3
+          }
+        },
+        {
+          "palette": "Color_Palette_1",
+          "row": 2,
+          "col": 2,
+          "index": 16,
+          "hex": "#e6226e",
+          "rgb": {
+            "r": 230,
+            "g": 34,
+            "b": 110
+          },
+          "hsv": {
+            "h": 336.7,
+            "s": 85.2,
+            "v": 90.2
+          },
+          "hsl": {
+            "h": 336.7,
+            "s": 79.7,
+            "l": 51.8
+          }
+        },
+        {
+          "palette": "Color_Palette_1",
+          "row": 2,
+          "col": 3,
+          "index": 17,
+          "hex": "#ffc315",
+          "rgb": {
+            "r": 255,
+            "g": 195,
+            "b": 21
+          },
+          "hsv": {
+            "h": 44.6,
+            "s": 91.8,
+            "v": 100.0
+          },
+          "hsl": {
+            "h": 44.6,
+            "s": 100.0,
+            "l": 54.1
+          }
+        },
+        {
+          "palette": "Color_Palette_1",
+          "row": 2,
+          "col": 4,
+          "index": 18,
+          "hex": "#009432",
+          "rgb": {
+            "r": 0,
+            "g": 148,
+            "b": 50
+          },
+          "hsv": {
+            "h": 140.3,
+            "s": 100.0,
+            "v": 58.0
+          },
+          "hsl": {
+            "h": 140.3,
+            "s": 100.0,
+            "l": 29.0
+          }
+        },
+        {
+          "palette": "Color_Palette_1",
+          "row": 2,
+          "col": 5,
+          "index": 19,
+          "hex": "#0053dd",
+          "rgb": {
+            "r": 0,
+            "g": 83,
+            "b": 221
+          },
+          "hsv": {
+            "h": 217.5,
+            "s": 100.0,
+            "v": 86.7
+          },
+          "hsl": {
+            "h": 217.5,
+            "s": 100.0,
+            "l": 43.3
+          }
+        },
+        {
+          "palette": "Color_Palette_1",
+          "row": 2,
+          "col": 6,
+          "index": 20,
+          "hex": "#713e27",
+          "rgb": {
+            "r": 113,
+            "g": 62,
+            "b": 39
+          },
+          "hsv": {
+            "h": 18.6,
+            "s": 65.5,
+            "v": 44.3
+          },
+          "hsl": {
+            "h": 18.6,
+            "s": 48.7,
+            "l": 29.8
+          }
+        }
+      ]
+    },
+    "Color_Palette_2": {
+      "filename": "Color_Palette_2.png",
+      "dimensions": {
+        "width": 471,
+        "height": 92
+      },
+      "grid": {
+        "rows": 1,
+        "cols": 5,
+        "swatchSize": 60,
+        "pitch": 90
+      },
+      "colorCount": 5,
+      "colors": [
+        {
+          "palette": "Color_Palette_2",
+          "row": 0,
+          "col": 0,
+          "index": 0,
+          "hex": "#eba27f",
+          "rgb": {
+            "r": 235,
+            "g": 162,
+            "b": 127
+          },
+          "hsv": {
+            "h": 19.4,
+            "s": 46.0,
+            "v": 92.2
+          },
+          "hsl": {
+            "h": 19.4,
+            "s": 73.0,
+            "l": 71.0
+          }
+        },
+        {
+          "palette": "Color_Palette_2",
+          "row": 0,
+          "col": 1,
+          "index": 1,
+          "hex": "#fae6e1",
+          "rgb": {
+            "r": 250,
+            "g": 230,
+            "b": 225
+          },
+          "hsv": {
+            "h": 12.0,
+            "s": 10.0,
+            "v": 98.0
+          },
+          "hsl": {
+            "h": 12.0,
+            "s": 71.4,
+            "l": 93.1
+          }
+        },
+        {
+          "palette": "Color_Palette_2",
+          "row": 0,
+          "col": 2,
+          "index": 2,
+          "hex": "#ff35c2",
+          "rgb": {
+            "r": 255,
+            "g": 53,
+            "b": 194
+          },
+          "hsv": {
+            "h": 318.1,
+            "s": 79.2,
+            "v": 100.0
+          },
+          "hsl": {
+            "h": 318.1,
+            "s": 100.0,
+            "l": 60.4
+          }
+        },
+        {
+          "palette": "Color_Palette_2",
+          "row": 0,
+          "col": 3,
+          "index": 3,
+          "hex": "#4cfdff",
+          "rgb": {
+            "r": 76,
+            "g": 253,
+            "b": 255
+          },
+          "hsv": {
+            "h": 180.7,
+            "s": 70.2,
+            "v": 100.0
+          },
+          "hsl": {
+            "h": 180.7,
+            "s": 100.0,
+            "l": 64.9
+          }
+        },
+        {
+          "palette": "Color_Palette_2",
+          "row": 0,
+          "col": 4,
+          "index": 4,
+          "hex": "#68ff4c",
+          "rgb": {
+            "r": 104,
+            "g": 255,
+            "b": 76
+          },
+          "hsv": {
+            "h": 110.6,
+            "s": 70.2,
+            "v": 100.0
+          },
+          "hsl": {
+            "h": 110.6,
+            "s": 100.0,
+            "l": 64.9
+          }
+        }
+      ]
+    }
+  }
+}
