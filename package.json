@@ -7,9 +7,10 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "node --experimental-strip-types test_engine.mjs && node --experimental-strip-types test_calibration.mjs && node --experimental-strip-types test_math_primitives.mjs && node --experimental-strip-types test_editor_regression.mjs && node --experimental-strip-types test_scoring.mjs && node --experimental-strip-types test_optimizer.mjs && node --experimental-strip-types test_multilayer.mjs && node --experimental-strip-types test_simplifier.mjs",
+    "test": "node --experimental-strip-types test_engine.mjs && node --experimental-strip-types test_calibration.mjs && node --experimental-strip-types test_math_primitives.mjs && node --experimental-strip-types test_editor_regression.mjs && node --experimental-strip-types test_scoring.mjs && node --experimental-strip-types test_optimizer.mjs && node --experimental-strip-types test_multilayer.mjs && node --experimental-strip-types test_simplifier.mjs && node --experimental-strip-types test_region_reconstruction.mjs",
     "test:multilayer": "node --experimental-strip-types test_multilayer.mjs",
     "test:simplifier": "node --experimental-strip-types test_simplifier.mjs",
+    "test:region": "node --experimental-strip-types test_region_reconstruction.mjs",
     "test:heldout": "node --experimental-strip-types test_held_out.mjs"
   },
   "dependencies": {

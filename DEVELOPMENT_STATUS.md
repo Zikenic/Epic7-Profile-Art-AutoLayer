@@ -1,7 +1,7 @@
 # Development Status & Architectural Checkpoint
 
-**Date**: October 6, 2026  
-**Checkpoint**: Milestones 1, 2, 3, and 4 Complete (Ready for Milestone 5 UI Integration)
+**Date**: October 7, 2026  
+**Checkpoint**: Milestones 1-4, Phase 5 (Adaptive Simplifier), and Phase 6 (Region-Driven Reconstruction) Complete (Ready for Milestone 5 UI Integration)
 
 ---
 
@@ -100,6 +100,7 @@ All 7 test suites pass with zero failures:
 6. `test_optimizer.mjs`: 6 synthetic single-layer recovery scenarios, including zero-drift dynamic calibration verification.
 7. `test_multilayer.mjs`: Complete Milestone 4 test suite (Tests A through L, including determinism, strict layer improvement, layer order sensitivity, and cumulative drift safety).
 8. `test_simplifier.mjs`: Complete Phase 5 test suite (Tests A through H).
+9. `test_region_reconstruction.mjs`: Complete Phase 6 test suite (Tests A through G).
 
 ### B. Phase 5 Simplifier Test Results (`npm run test:simplifier`)
 | Test | Scenario | Raw Regions | Simplified Regions | Result |
@@ -113,22 +114,70 @@ All 7 test suites pass with zero failures:
 | **Test G** | Determinism & Repeatability | - | - | **PASSED** (Bit-for-bit identical raster and region list) |
 | **Test H** | Adaptive `minImprovement` Acceptance | - | - | **PASSED** (Subtle foreground circle recovered at loss 0.0002) |
 
-### C. Real-Image Diagnostic Comparison
-| Image | Raw Pipeline Regions | Simplified Pipeline Regions | Simplifier Runtime | Raw Recon Layers / Loss | Simplified Recon Layers / Loss |
-|---|---|---|---|---|---|
-| **Image 1 (`Seriane.png`)** | 2,000+ (pathological) | **11 coherent regions** | **107 ms** | 1 layer / 0.0125 (stalled) | 1 layer / 0.0001 (target matched) |
-| **Image 2 (`wp15313950.jpg`)** | 523 (fragmented) | **12 coherent regions** | **123 ms** | 4 layers / 0.2288 (timeout) | 4 layers / **0.0732 vs original** |
+### C. Phase 6 Region-Driven Reconstruction Test Results (`npm run test:region`)
+| Test | Scenario | Tested Feature | Result |
+|---|---|---|---|
+| **Test A** | Region to Candidate Initialization | Centroid, scale, orientation, palette color seeding | **PASSED** (88 candidates generated with direct geometric bounds) |
+| **Test B** | Candidate Preference & Aspect Matching | Anisotropic aspect ratio compatibility ranking | **PASSED** (Elongated structure matched by aspect-compatible primitive) |
+| **Test C** | Regional Improvement for Subtle Details | Regional error metric prevents macro-region starvation | **PASSED** (Subtle foreground eye/pupil recovered at center) |
+| **Test D** | Background Mode Policy | `'reconstruct'` vs `'ignore'` background handling | **PASSED** (Background correctly handled without suppressing foreground) |
+| **Test E** | Disconnected Same-Color Isolation | Topological separation of identical-color patches | **PASSED** (Independent spot layers placed accurately) |
+| **Test F** | Multi-Layer Complex Regions | Iterative residual moment tracking on non-convex shapes | **PASSED** (2 layers allocated to explain non-convex L-shape) |
+| **Test G** | Reconstruction Determinism | Bit-for-bit repeatability across repeated runs | **PASSED** (Identical layers and loss: 0.5690 across both runs) |
 
-### D. Build Verification (`npm run build`)
-- Clean compilation via `tsc && vite build` (output emitted to `dist/` in 1.88s).
-- `node_modules` remains completely unpatched and pristine.
+### D. Phase 6 Real-Image Quantitative Evaluation (`evaluate_phase6.mjs`)
+| Metric | Seriane (`Seriane.png`) | Wallpaper (`wp15313950.jpg`) |
+|---|---|---|
+| **Target Dimensions** | 210 × 310 (native 21:31) | 210 × 310 (native 21:31) |
+| **Raw Connected Components** | 2,300+ pixel fragments | 523 fragmented components |
+| **Simplified Macro-Regions** | **3 coherent regions** | **12 coherent regions** |
+| **Candidate Search Space Reduction** | **> 99.9% reduction** | **> 99.5% reduction** |
+| **Reconstruction Runtime** | **2.9s** (was 30s+ in Phase 4.5) | **31.2s** |
+| **Accepted Layers** | 3 layers (`Rounded_Square`, `Triangle`, `Circle`) | 4 layers (`Rounded_Square` bg + 3 accent layers) |
+| **Final Loss vs Simplified Target** | **0.0001** (near-perfect match) | **0.0478** |
+| **Final Loss vs Raw Target** | **0.0125** | **0.0810** |
+| **Candidate Evaluation Throughput** | ~5,500 candidate checks/sec | ~5,200 candidate checks/sec |
+
+### E. Build Verification (`npm run build`)
+- Clean compilation via `tsc && vite build` (output emitted to `dist/` in 1.86s).
+- All 9 test suites pass cleanly via `npm test`.
 
 ---
 
-## 3. Known Limitations & Next Steps
+## 3. Architecture of Region-Driven Reconstruction (Phase 6)
 
-1. **Phase 6 / Milestone 5 Next Step**:
-   - AutoLayer UI integration: Crop workspace (21:31 ratio), drag-and-drop / upload modal, live progress rendering.
-   - Web Worker execution for ImageSimplifier and MultiLayerReconstructor.
-2. **Highly Complex Freeform Vector Art**:
-   - Complex non-geometric illustrations with thousands of curves will be approximated using up to 130 overlapping geometric primitives.
+```text
+RAW SOURCE IMAGE
+       ↓
+ImageSimplifier (Bilateral filter + Lab K-means + Palette mapping + 8-connected BFS + Island merging)
+       ↓
+RegionGraph (Coherent Macro-Regions + Adjacency + Saliency + Detail Protection)
+       ↓
+MultiLayerReconstructor:
+  1. Active Region Prioritization:
+     importance = 0.35 * areaFraction + 0.30 * saliency + 0.35 * meanResidual + (isPreservedDetail ? 0.25 : 0)
+  2. Direct Region -> Candidate Seeding:
+     Geometric moments (centroid, semi-major/minor radii, orientation θ) directly parameterize candidate shapes
+  3. Aspect-Ratio Matching & Anisotropic Expansion:
+     Shortlists primitives by aspect compatibility; expands uniform shapes into anisotropic bounding boxes
+  4. Dual-Objective Scoring:
+     combinedImprovement = fastImprovement + regionalWeight * regionalImprovement
+  5. Dynamic Residual Tracking:
+     Non-convex and multi-layer regions update their active unexplained residual moments per iteration
+       ↓
+Authoritative Verification (DeterministicRenderer + ImageScorer @ 210×310)
+       ↓
+Local Coordinate Polish & Redundant Layer Reduction
+       ↓
+Clean Epic Seven Composition (≤ 130 layers)
+```
+
+---
+
+## 4. Known Limitations & Next Steps
+
+1. **Milestone 5 / Next Phase**:
+   - **Auto-Layer Crop/Import UI**: Interactive 21:31 canvas crop tool, drag-and-drop file upload, live multi-layer reconstruction progress preview, preset simplification profiles (`FAST`, `BALANCED`, `DETAIL`).
+   - **Web Worker Execution**: Offload simplification and reconstruction loop from main UI thread to Web Worker for silky smooth 60fps UI responsiveness.
+2. **Extreme Geometric Detail Approximation**:
+   - Extremely high-frequency textures (such as intricate lace or chainmail) will be abstracted into macro-clusters by the 130-layer budget limit.

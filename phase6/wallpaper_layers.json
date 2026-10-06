@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "name": "Phase6_wallpaper",
+  "canvas": {
+    "aspectRatio": "21:31",
+    "aspectRatioWidth": 21,
+    "aspectRatioHeight": 31,
+    "backgroundColor": "#141721"
+  },
+  "layers": [
+    {
+      "id": "layer-1-bg-1",
+      "name": "Background 1",
+      "shapeAsset": "Rounded_Square",
+      "x": 0.5,
+      "y": 0.5,
+      "scaleX": 2,
+      "scaleY": 2.8,
+      "rotation": 0,
+      "color": "#3f48bb",
+      "opacity": 1,
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "layer-2-Circle-161",
+      "name": "Circle 2",
+      "shapeAsset": "Circle",
+      "x": 0.8941,
+      "y": 0.5772,
+      "scaleX": 0.5688000000000001,
+      "scaleY": 0.5422,
+      "rotation": 0,
+      "color": "#fae6e1",
+      "opacity": 1,
+      "visible": true,
+      "locked": false
+    }
+  ],
+  "createdAt": "2026-10-06T17:43:07.801Z",
+  "updatedAt": "2026-10-06T17:43:07.801Z"
+}
