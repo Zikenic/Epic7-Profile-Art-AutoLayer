@@ -39,6 +39,7 @@ export interface ScoreResult {
   edgeLoss: number;
   alphaLoss: number;
   comparedPixels: number;
+  foregroundLoss?: number;
 }
 
 /**
@@ -119,6 +120,7 @@ import type { SimplificationOptions } from './ImageSimplifier.ts';
 export interface QualityCheckpoint {
   layerCount: number;
   globalLoss: number;
+  foregroundLoss?: number;
   elapsedMs: number;
 }
 
@@ -147,13 +149,15 @@ export interface ReconstructionOptions {
   saveDebugSnapshots?: boolean;        // Optional flag to capture intermediate iteration images
   onProgress?: (progress: ReconstructionProgress) => void;
 
-  // Region-Driven Reconstruction Options (Phase 6)
+  // Region-Driven Reconstruction Options (Phase 6 & Phase 7)
   regionGraph?: RegionGraph;           // Precomputed RegionGraph from ImageSimplifier
   useSimplification?: boolean;         // Automatically run ImageSimplifier if no regionGraph provided (default true)
   simplificationOptions?: SimplificationOptions; // Configuration for ImageSimplifier
   backgroundMode?: BackgroundMode;     // Policy for handling background regions ('reconstruct' | 'transparent' | 'ignore')
   maxRegionsPerIteration?: number;     // Number of top priority regions evaluated per iteration (default 12)
-  regionalWeight?: number;             // Weight for regional improvement in candidate ranking (default 0.40)
+  globalWeight?: number;               // Weight for global improvement in candidate utility (default 0.25)
+  foregroundWeight?: number;           // Weight for foreground-weighted improvement in candidate utility (default 0.45)
+  regionalWeight?: number;             // Weight for regional improvement in candidate utility (default 0.30)
   checkpoints?: number[];              // Diagnostic layer checkpoints for quality curve tracking
 }
 
@@ -187,6 +191,7 @@ export interface ReconstructionDiagnostics {
   layersAfterReduction: number;
   initialScore: ScoreResult;
   finalScore: ScoreResult;
+  foregroundWeightedLoss: number;
   history: AcceptedLayerRecord[];
   checkpoints: QualityCheckpoint[];
   timingBreakdownMs: {
@@ -194,6 +199,7 @@ export interface ReconstructionDiagnostics {
     fastEvalMs: number;
     verificationMs: number;
     polishMs: number;
+    residualSplitMs: number;
     totalMs: number;
   };
   stopReason: 'max_layers' | 'no_improvement' | 'timeout' | 'target_matched';

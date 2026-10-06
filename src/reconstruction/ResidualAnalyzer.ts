@@ -19,6 +19,27 @@ export interface ResidualRegion {
   isUncoveredTarget: boolean;
 }
 
+export interface ResidualSubRegion {
+  id: string;
+  parentRegionId: string;
+  parentRegionIndex: number;
+  pixelCount: number;
+  totalMass: number;
+  meanResidual: number;
+  bounds: { minX: number; minY: number; maxX: number; maxY: number };
+  normalizedBounds: { x: number; y: number; width: number; height: number };
+  centroid: { x: number; y: number };
+  pixelCentroid: { x: number; y: number };
+  normalizedRadii: { major: number; minor: number };
+  principalRadii: { major: number; minor: number };
+  orientationDeg: number;
+  dominantPaletteHex: string;
+  alternativePaletteHexes: string[];
+  isUncovered: boolean;
+  importance: number;
+  pixelIndices: Int32Array;
+}
+
 export interface ResidualAnalysisResult {
   meanResidual: number;
   maxResidual: number;
@@ -334,5 +355,273 @@ export class ResidualAnalyzer {
       regions: finalRegions,
       residualMap
     };
+  }
+
+  /**
+   * Focused residual decomposition function for Phase 7 (True Multi-Shape Reconstruction).
+   * Restricts analysis to the source region's bounds/mask and decomposes remaining residual
+   * into coherent sub-regions with independent geometric moments and palette colors.
+   */
+  public static splitRegionResidual(
+    target: RasterImage,
+    currentRender: RasterImage,
+    region: {
+      id: string;
+      bounds: { x: number; y: number; width: number; height: number };
+      paletteHex: string;
+      saliencyScore?: number;
+      isPreservedDetail?: boolean;
+    },
+    regionIndex: number,
+    pixelRegionMap?: Int32Array | null,
+    options: {
+      residualThreshold?: number;
+      minPixels?: number;
+      minMass?: number;
+      maxSubRegions?: number;
+    } = {}
+  ): ResidualSubRegion[] {
+    const {
+      residualThreshold = 0.06,
+      minPixels = 6,
+      minMass = 0.5,
+      maxSubRegions = 4
+    } = options;
+
+    const w = target.width;
+    const h = target.height;
+    const tData = target.data;
+    const cData = currentRender.data;
+
+    const minX = Math.max(0, Math.floor(region.bounds.x * w));
+    const maxX = Math.min(w - 1, Math.ceil((region.bounds.x + region.bounds.width) * w));
+    const minY = Math.max(0, Math.floor(region.bounds.y * h));
+    const maxY = Math.min(h - 1, Math.ceil((region.bounds.y + region.bounds.height) * h));
+
+    const bw = maxX - minX + 1;
+    const bh = maxY - minY + 1;
+    if (bw <= 0 || bh <= 0) return [];
+
+    const localResidual = new Float32Array(bw * bh);
+    let activeResidualPixels = 0;
+
+    for (let y = minY; y <= maxY; y++) {
+      const rowOffset = y * w;
+      const localRowOffset = (y - minY) * bw;
+      for (let x = minX; x <= maxX; x++) {
+        const pIdx = rowOffset + x;
+        if (pixelRegionMap && pixelRegionMap[pIdx] !== regionIndex) {
+          continue;
+        }
+
+        const at = tData[pIdx * 4 + 3] / 255.0;
+        const ac = cData[pIdx * 4 + 3] / 255.0;
+        let err = 0.0;
+        if (at < 0.02 && ac < 0.02) {
+          err = 0.0;
+        } else if (at >= 0.05 && ac >= 0.05) {
+          const rgbT: RGB = { r: tData[pIdx * 4], g: tData[pIdx * 4 + 1], b: tData[pIdx * 4 + 2] };
+          const rgbC: RGB = { r: cData[pIdx * 4], g: cData[pIdx * 4 + 1], b: cData[pIdx * 4 + 2] };
+          const cDiff = colorDifferenceNormalized(rgbT, rgbC);
+          const aDiff = Math.abs(at - ac);
+          err = Math.max(aDiff, cDiff * Math.min(at, ac));
+        } else {
+          err = at >= 0.05 ? at : ac;
+        }
+
+        if (err >= residualThreshold) {
+          localResidual[localRowOffset + (x - minX)] = err;
+          activeResidualPixels++;
+        }
+      }
+    }
+
+    if (activeResidualPixels < minPixels) {
+      return [];
+    }
+
+    const visited = new Uint8Array(bw * bh);
+    const queue = new Int32Array(bw * bh);
+    const subRegions: ResidualSubRegion[] = [];
+    let subIdx = 1;
+
+    const neighbors = [
+      [0, -1], [1, -1], [1, 0], [1, 1],
+      [0, 1], [-1, 1], [-1, 0], [-1, -1]
+    ];
+
+    for (let ly = 0; ly < bh; ly++) {
+      const lRowOffset = ly * bw;
+      const globalY = minY + ly;
+      for (let lx = 0; lx < bw; lx++) {
+        const localIdx = lRowOffset + lx;
+        if (visited[localIdx] || localResidual[localIdx] < residualThreshold) {
+          continue;
+        }
+
+        let qHead = 0;
+        let qTail = 0;
+        queue[qTail++] = localIdx;
+        visited[localIdx] = 1;
+
+        let compPixelCount = 0;
+        let compMass = 0;
+        let compSumX = 0;
+        let compSumY = 0;
+        let cMinX = minX + lx;
+        let cMaxX = minX + lx;
+        let cMinY = globalY;
+        let cMaxY = globalY;
+
+        let uncoveredCount = 0;
+        const compPixelIndices: number[] = [];
+
+        while (qHead < qTail) {
+          const currLocalIdx = queue[qHead++];
+          const curLx = currLocalIdx % bw;
+          const curLy = (currLocalIdx / bw) | 0;
+          const curGx = minX + curLx;
+          const curGy = minY + curLy;
+          const mag = localResidual[currLocalIdx];
+
+          compPixelCount++;
+          compMass += mag;
+          compSumX += curGx * mag;
+          compSumY += curGy * mag;
+
+          if (curGx < cMinX) cMinX = curGx;
+          if (curGx > cMaxX) cMaxX = curGx;
+          if (curGy < cMinY) cMinY = curGy;
+          if (curGy > cMaxY) cMaxY = curGy;
+
+          const globalPIdx = curGy * w + curGx;
+          compPixelIndices.push(globalPIdx);
+
+          const byteIdx = globalPIdx * 4;
+          const at = tData[byteIdx + 3] / 255.0;
+          const ac = cData[byteIdx + 3] / 255.0;
+          if (at > ac) uncoveredCount++;
+
+          for (let n = 0; n < 8; n++) {
+            const nLx = curLx + neighbors[n][0];
+            const nLy = curLy + neighbors[n][1];
+            if (nLx >= 0 && nLx < bw && nLy >= 0 && nLy < bh) {
+              const nLocalIdx = nLy * bw + nLx;
+              if (!visited[nLocalIdx] && localResidual[nLocalIdx] >= residualThreshold) {
+                visited[nLocalIdx] = 1;
+                queue[qTail++] = nLocalIdx;
+              }
+            }
+          }
+        }
+
+        if (compPixelCount < minPixels || compMass < minMass) {
+          continue;
+        }
+
+        const cx = compSumX / compMass;
+        const cy = compSumY / compMass;
+
+        // Second pass: central moments and color voting
+        let mu20 = 0;
+        let mu02 = 0;
+        let mu11 = 0;
+        const colorVotes = new Map<string, number>();
+
+        for (let k = 0; k < qTail; k++) {
+          const currLocalIdx = queue[k];
+          const curLx = currLocalIdx % bw;
+          const curLy = (currLocalIdx / bw) | 0;
+          const curGx = minX + curLx;
+          const curGy = minY + curLy;
+          const mag = localResidual[currLocalIdx];
+
+          const dx = curGx - cx;
+          const dy = curGy - cy;
+          mu20 += dx * dx * mag;
+          mu02 += dy * dy * mag;
+          mu11 += dx * dy * mag;
+
+          const globalPIdx = curGy * w + curGx;
+          const byteIdx = globalPIdx * 4;
+          const at = tData[byteIdx + 3] / 255.0;
+          if (at >= 0.05) {
+            const rgb: RGB = { r: tData[byteIdx], g: tData[byteIdx + 1], b: tData[byteIdx + 2] };
+            const pColor = findClosestPaletteColor(rgb).hex;
+            colorVotes.set(pColor, (colorVotes.get(pColor) ?? 0) + mag);
+          }
+        }
+
+        mu20 /= compMass;
+        mu02 /= compMass;
+        mu11 /= compMass;
+
+        const delta = mu20 - mu02;
+        const sqrtTerm = Math.sqrt(delta * delta + 4 * mu11 * mu11);
+        const lambda1 = Math.max(0.1, (mu20 + mu02 + sqrtTerm) / 2);
+        const lambda2 = Math.max(0.1, (mu20 + mu02 - sqrtTerm) / 2);
+        const majorR = Math.max(1.0, 2.0 * Math.sqrt(lambda1));
+        const minorR = Math.max(1.0, 2.0 * Math.sqrt(lambda2));
+        const orientationRad = 0.5 * Math.atan2(2 * mu11, delta);
+        const orientationDeg = (orientationRad * 180) / Math.PI;
+
+        // Palette color determination
+        const sortedColors = Array.from(colorVotes.entries()).sort((a, b) => b[1] - a[1]);
+        const dominantColor = sortedColors.length > 0 ? sortedColors[0][0] : region.paletteHex;
+        const topVotes = sortedColors.length > 0 ? sortedColors[0][1] : 0;
+        const alternativeColors: string[] = [];
+        for (let cIdx = 1; cIdx < sortedColors.length; cIdx++) {
+          if (sortedColors[cIdx][1] >= topVotes * 0.15) {
+            alternativeColors.push(sortedColors[cIdx][0]);
+          }
+        }
+
+        const meanRes = compMass / compPixelCount;
+        const saliency = region.saliencyScore ?? 0.5;
+        let importance = 0.35 * (compPixelCount / (w * h)) + 0.35 * saliency + 0.30 * meanRes;
+        if (region.isPreservedDetail) importance += 0.30;
+
+        subRegions.push({
+          id: `${region.id}_res_${subIdx++}`,
+          parentRegionId: region.id,
+          parentRegionIndex: regionIndex,
+          pixelCount: compPixelCount,
+          totalMass: Number(compMass.toFixed(3)),
+          meanResidual: Number(meanRes.toFixed(4)),
+          bounds: { minX: cMinX, minY: cMinY, maxX: cMaxX, maxY: cMaxY },
+          normalizedBounds: {
+            x: Number((cMinX / w).toFixed(4)),
+            y: Number((cMinY / h).toFixed(4)),
+            width: Number(((cMaxX - cMinX + 1) / w).toFixed(4)),
+            height: Number(((cMaxY - cMinY + 1) / h).toFixed(4))
+          },
+          centroid: {
+            x: Number((cx / w).toFixed(4)),
+            y: Number((cy / h).toFixed(4))
+          },
+          pixelCentroid: {
+            x: Number(cx.toFixed(2)),
+            y: Number(cy.toFixed(2))
+          },
+          normalizedRadii: {
+            major: Number((majorR / w).toFixed(4)),
+            minor: Number((minorR / w).toFixed(4))
+          },
+          principalRadii: {
+            major: Number(majorR.toFixed(2)),
+            minor: Number(minorR.toFixed(2))
+          },
+          orientationDeg: Number(orientationDeg.toFixed(2)),
+          dominantPaletteHex: dominantColor,
+          alternativePaletteHexes: alternativeColors,
+          isUncovered: uncoveredCount >= compPixelCount * 0.5,
+          importance: Number(importance.toFixed(4)),
+          pixelIndices: new Int32Array(compPixelIndices)
+        });
+      }
+    }
+
+    subRegions.sort((a, b) => b.importance - a.importance);
+    return subRegions.slice(0, maxSubRegions);
   }
 }

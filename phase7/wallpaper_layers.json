@@ -1,0 +1,73 @@
+{
+  "image": "wallpaper",
+  "layerCount": 4,
+  "globalLoss": 0.0803107681119314,
+  "foregroundLoss": 0.3947339438657463,
+  "timingBreakdownMs": {
+    "candidateGenMs": 15,
+    "fastEvalMs": 118264,
+    "verificationMs": 240,
+    "polishMs": 1905,
+    "residualSplitMs": 26,
+    "totalMs": 120724
+  },
+  "checkpoints": [],
+  "layers": [
+    {
+      "id": "layer-1-bg-1",
+      "name": "Background 1",
+      "shapeAsset": "Rounded_Square",
+      "x": 0.5,
+      "y": 0.5,
+      "scaleX": 2,
+      "scaleY": 2.8,
+      "rotation": 0,
+      "color": "#3f48bb",
+      "opacity": 1,
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "layer-2-Circle-166",
+      "name": "Circle 2",
+      "shapeAsset": "Circle",
+      "x": 0.8954,
+      "y": 0.5777,
+      "scaleX": 0.5473,
+      "scaleY": 0.5623,
+      "rotation": 0,
+      "color": "#fae6e1",
+      "opacity": 1,
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "layer-3-Heart-11",
+      "name": "Heart 3",
+      "shapeAsset": "Heart",
+      "x": 0.5596,
+      "y": 0.5174,
+      "scaleX": 0.072,
+      "scaleY": 0.072,
+      "rotation": -147.5,
+      "color": "#eba27f",
+      "opacity": 1,
+      "visible": true,
+      "locked": false
+    },
+    {
+      "id": "layer-4-Circle-99",
+      "name": "Circle 4",
+      "shapeAsset": "Circle",
+      "x": 0.6899,
+      "y": 0.4801,
+      "scaleX": 0.1989,
+      "scaleY": 0.088,
+      "rotation": 0,
+      "color": "#eba27f",
+      "opacity": 1,
+      "visible": true,
+      "locked": false
+    }
+  ]
+}

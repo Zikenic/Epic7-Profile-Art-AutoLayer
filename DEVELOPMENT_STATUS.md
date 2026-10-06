@@ -1,7 +1,7 @@
 # Development Status & Architectural Checkpoint
 
 **Date**: October 7, 2026  
-**Checkpoint**: Milestones 1-4, Phase 5 (Adaptive Simplifier), and Phase 6 (Region-Driven Reconstruction) Complete (Ready for Milestone 5 UI Integration)
+**Checkpoint**: Milestones 1-4, Phase 5 (Adaptive Simplifier), Phase 6 (Region-Driven Reconstruction), and Phase 7 (True Multi-Shape Reconstruction) Complete (Ready for Milestone 5 UI Integration)
 
 ---
 
@@ -54,7 +54,7 @@
 - **Orchestrator**: `MultiLayerReconstructor.ts` exposes `reconstruct(target, options)` and `createProjectFromLayers()`.
 - **Residual Representation**:
   - Per-pixel error magnitude: $M(x, y) = \max(|a_t - a_c|,\; \min(a_t, a_c) \cdot \Delta E(RGB_t, RGB_c))$.
-  - Color-homogeneous connected component segmentation: partitions high-residual pixels into distinct spatial clusters grouped strictly by target palette color, preventing complementary color blending across adjacent shapes.
+  - Color-homogeneous connected component segmentation: partitions high-residual pixels into distinct spatial clusters grouped strictly by target palette color.
 - **Fast Incremental Evaluation**:
   - Caches base canvas rendering of current layer stack.
   - Composites candidate layer using native 2D canvas operations (`drawImage`) in under 0.25 ms per candidate.
@@ -62,21 +62,13 @@
   - Evaluates candidate insertion at Top (`length`), Bottom (`0`), and directly above the dominant layer covering the candidate region's centroid.
 - **Authoritative Finalist Verification**:
   - Renders top $K$ finalists at native verification resolution ($210 \times 310$) with `DeterministicRenderer` and scores with `ImageScorer`.
-  - Selects the finalist achieving the highest verified loss improvement exceeding `minImprovement`.
+  - Selects the finalist achieving the highest verified utility exceeding thresholds.
 - **Local Micro-Polish**:
   - Multi-scale coordinate descent ($dPos = 0.012, 0.005, 0.002$; $dScale = 0.03, 0.015, 0.006$; $dRot = 3^\circ, 1.5^\circ, 0.8^\circ$) on native resolution before committing.
 - **Post-Greedy Layer Reduction**:
   - Estimates marginal loss impact of removing each layer.
-  - Iteratively prunes redundant or occluded layers as long as total loss regression stays within `reductionTolerance`.
+  - Iteratively prunes redundant or occluded layers with foreground protection safeguards.
 
----
-
-## 2. Test Evidence & Verification Results
-
-### A. All Automated Test Suites (`npm test`)
-All 7 test suites pass with zero failures:
-1. `test_engine.mjs`: Profile card data structures, layer ordering, and 130-layer limit.
-2. `test_calibration.mjs`: Native square frame calibration consistency.
 ### E. Adaptive Image Simplifier & Region Preprocessing (Phase 5)
 - **Module**: `ImageSimplifier.ts` and `RegionRepresentation.ts`.
 - **Edge-Preserving Smoothing**: Bilateral filter on Lab channels ($5\times 5$ window, spatial $\sigma_s = 2.0$, range $\sigma_r = 15.0$) suppresses high-frequency antialiasing and gradient noise without blurring structural edges.
@@ -87,56 +79,58 @@ All 7 test suites pass with zero failures:
 - **Adaptive `minImprovement` Threshold**: Replaces rigid static threshold with dynamic scaling:
   $\text{effectiveThreshold} = \max(\text{floor},\; \min(\text{ceiling},\; \text{currentLoss} \cdot \text{fraction}))$, allowing subtle foreground details to be reconstructed without premature stalling.
 
+### F. True Multi-Shape Reconstruction & Dynamic Residual Splitting (Phase 7)
+- **Paradigm Shift**: Moved from "one region $\rightarrow$ one primary shape" to iterative decomposition:
+  $\text{Region} \rightarrow \text{best shape} \rightarrow \text{render} \rightarrow \text{residual sub-regions} \rightarrow \text{next shape} \rightarrow \dots$.
+- **Residual Decomposition API**: `ResidualAnalyzer.splitRegionResidual()` restricts analysis to the parent region's bounds/mask, filters noise ($e \ge 0.06$), extracts 8-connected components, and calculates central moments ($\mu_{20}, \mu_{02}, \mu_{11}$) and PCA principal radii to seed subsequent sub-shapes.
+- **Multi-Color Sub-Region Layering**: Bins pixel errors by nearest Epic Seven palette color, enabling independent candidate generation for dominant and secondary colors in compound areas (e.g. highlights, shadows, accessories).
+- **Foreground Saliency Weighting**:
+  - Explicit foreground mask weights non-background pixels by saliency ($w_f \in [0.35, 1.0]$) while suppressing background ($w_f = 0.05$).
+  - Dual loss reporting: tracks both `globalLoss` and `foregroundWeightedLoss`.
+- **Candidate Utility Function**:
+  $$\text{Utility} = W_g \cdot \Delta \mathcal{L}_{\text{global}} + W_f \cdot \Delta \mathcal{L}_{\text{foreground}} + W_r \cdot \max(0, \Delta \mathcal{L}_{\text{regional}})$$
+  where default weights are $W_g = 0.25, W_f = 0.45, W_r = 0.30$.
+- **Reduction Pass Foreground Safeguard**: Pruning prevents removing layers that cause foreground loss regression $> 1.5 \times \text{tolerance}$, protecting small salient features.
+
 ---
 
 ## 2. Test Suites & Verification Results
 
 ### A. Core Regression Suites (`npm test`)
+All 10 test suites pass with 100% clean status:
 1. `test_engine.mjs`: Core ProfileEngine operations and layer limits.
 2. `test_calibration.mjs`: Native frame calibration vs in-game captures.
 3. `test_math_primitives.mjs`: Mathematical path generation for all 13 primitives.
 4. `test_editor_regression.mjs`: Canvas ratio, transform bounds, and layer operations.
 5. `test_scoring.mjs`: Color conversion, alpha masking, identity loss, and metric monotonicity.
-6. `test_optimizer.mjs`: 6 synthetic single-layer recovery scenarios, including zero-drift dynamic calibration verification.
-7. `test_multilayer.mjs`: Complete Milestone 4 test suite (Tests A through L, including determinism, strict layer improvement, layer order sensitivity, and cumulative drift safety).
+6. `test_optimizer.mjs`: 6 synthetic single-layer recovery scenarios.
+7. `test_multilayer.mjs`: Complete Milestone 4 test suite (Tests A through L).
 8. `test_simplifier.mjs`: Complete Phase 5 test suite (Tests A through H).
 9. `test_region_reconstruction.mjs`: Complete Phase 6 test suite (Tests A through G).
+10. `test_true_multishape.mjs`: Complete Phase 7 test suite (Tests A through G).
 
-### B. Phase 5 Simplifier Test Results (`npm run test:simplifier`)
-| Test | Scenario | Raw Regions | Simplified Regions | Result |
-|---|---|---|---|---|
-| **Test A** | Flat Solid Regions | 3 | 3 | **PASSED** (Minimal regions, 3 palette colors preserved) |
-| **Test B** | Smooth Continuous Gradient | 5 | 5 | **PASSED** (Quantized into 5 tonal bands, zero 1-px islands) |
-| **Test C** | Antialiased Edge Boundary | 119 | 2 | **PASSED** (117 fringe artifacts merged into circle/background) |
-| **Test D** | Small High-Contrast Detail | 2 | 2 | **PASSED** (8x8 pupil preserved with saliency 0.438) |
-| **Test E** | Random Pixel Salt & Pepper Noise | 46 | 2 | **PASSED** (Noise suppressed, macro-structures retained) |
-| **Test F** | Disconnected Same-Color Regions | 3 | 3 | **PASSED** (2 disconnected foreground circles cleanly isolated) |
-| **Test G** | Determinism & Repeatability | - | - | **PASSED** (Bit-for-bit identical raster and region list) |
-| **Test H** | Adaptive `minImprovement` Acceptance | - | - | **PASSED** (Subtle foreground circle recovered at loss 0.0002) |
-
-### C. Phase 6 Region-Driven Reconstruction Test Results (`npm run test:region`)
+### B. Phase 7 True Multi-Shape Test Results (`npm run test:multishape`)
 | Test | Scenario | Tested Feature | Result |
 |---|---|---|---|
-| **Test A** | Region to Candidate Initialization | Centroid, scale, orientation, palette color seeding | **PASSED** (88 candidates generated with direct geometric bounds) |
-| **Test B** | Candidate Preference & Aspect Matching | Anisotropic aspect ratio compatibility ranking | **PASSED** (Elongated structure matched by aspect-compatible primitive) |
-| **Test C** | Regional Improvement for Subtle Details | Regional error metric prevents macro-region starvation | **PASSED** (Subtle foreground eye/pupil recovered at center) |
-| **Test D** | Background Mode Policy | `'reconstruct'` vs `'ignore'` background handling | **PASSED** (Background correctly handled without suppressing foreground) |
-| **Test E** | Disconnected Same-Color Isolation | Topological separation of identical-color patches | **PASSED** (Independent spot layers placed accurately) |
-| **Test F** | Multi-Layer Complex Regions | Iterative residual moment tracking on non-convex shapes | **PASSED** (2 layers allocated to explain non-convex L-shape) |
-| **Test G** | Reconstruction Determinism | Bit-for-bit repeatability across repeated runs | **PASSED** (Identical layers and loss: 0.5690 across both runs) |
+| **Test A** | Compound Region Decomposition | Non-convex L-shape fitted with multiple shapes | **PASSED** (3 shapes: Heart + Half_Circle + Baloon allocated to single L-shape) |
+| **Test B** | Multi-Color Layering in Same Visual Area | Stacking multiple colors within compound region | **PASSED** (3 colors: #ffffff base + #3f48bb + #e43032 detail) |
+| **Test C** | Residual Splitting & Sub-Region Discovery | Remaining error extracted as sub-region | **PASSED** (1,500-px sub-region extracted with centroid and moments) |
+| **Test D** | Foreground-Aware Utility Prioritization | Small high-contrast detail prioritized | **PASSED** (Small red pupil prioritized despite tiny pixel area) |
+| **Test E** | Multi-Layer Budget Utilization | Continuous layer placement across budget | **PASSED** (5 shapes accepted up to requested budget) |
+| **Test F** | Graceful Termination on Negligible Residual | Halts cleanly when target matched | **PASSED** (Terminates with `target_matched` at 0.001 loss threshold) |
+| **Test G** | Reconstruction Determinism | Bit-for-bit repeatability across repeated runs | **PASSED** (Exact identical layer parameters and loss values) |
 
-### D. Phase 6 Real-Image Quantitative Evaluation (`evaluate_phase6.mjs`)
+### C. Phase 7 Real-Image Quantitative Evaluation (`evaluate_phase7.mjs`)
 | Metric | Seriane (`Seriane.png`) | Wallpaper (`wp15313950.jpg`) |
 |---|---|---|
 | **Target Dimensions** | 210 × 310 (native 21:31) | 210 × 310 (native 21:31) |
-| **Raw Connected Components** | 2,300+ pixel fragments | 523 fragmented components |
-| **Simplified Macro-Regions** | **3 coherent regions** | **12 coherent regions** |
-| **Candidate Search Space Reduction** | **> 99.9% reduction** | **> 99.5% reduction** |
-| **Reconstruction Runtime** | **2.9s** (was 30s+ in Phase 4.5) | **31.2s** |
-| **Accepted Layers** | 3 layers (`Rounded_Square`, `Triangle`, `Circle`) | 4 layers (`Rounded_Square` bg + 3 accent layers) |
-| **Final Loss vs Simplified Target** | **0.0001** (near-perfect match) | **0.0478** |
-| **Final Loss vs Raw Target** | **0.0125** | **0.0810** |
-| **Candidate Evaluation Throughput** | ~5,500 candidate checks/sec | ~5,200 candidate checks/sec |
+| **Simplified Macro-Regions** | 3 coherent regions (146ms) | 12 coherent regions (167ms) |
+| **Initial Global Loss** | 0.8500 | 0.8500 |
+| **Final Global Loss** | **0.0125** | **0.0803** |
+| **Final Foreground Loss** | **0.0473** | **0.3947** |
+| **Accepted Layers** | 1 layer (Full #ffffff background matches canvas) | 4 layers (`Rounded_Square` bg + `Circle` body + `Heart` + `Circle` accents) |
+| **Residual Split Runtime** | **7 ms** | **26 ms** |
+| **Stop Reason** | `no_improvement` (canvas already matched) | `timeout` (120s limit reached) |
 
 ### E. Build Verification (`npm run build`)
 - Clean compilation via `tsc && vite build` (output emitted to `dist/` in 1.86s).

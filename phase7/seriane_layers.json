@@ -1,0 +1,31 @@
+{
+  "image": "seriane",
+  "layerCount": 1,
+  "globalLoss": 0.012461087787668407,
+  "foregroundLoss": 0.04732119290545414,
+  "timingBreakdownMs": {
+    "candidateGenMs": 4,
+    "fastEvalMs": 25174,
+    "verificationMs": 94,
+    "polishMs": 467,
+    "residualSplitMs": 7,
+    "totalMs": 25778
+  },
+  "checkpoints": [],
+  "layers": [
+    {
+      "id": "layer-1-bg-1",
+      "name": "Background 1",
+      "shapeAsset": "Rounded_Square",
+      "x": 0.5,
+      "y": 0.5,
+      "scaleX": 2,
+      "scaleY": 2.8,
+      "rotation": 0,
+      "color": "#ffffff",
+      "opacity": 1,
+      "visible": true,
+      "locked": false
+    }
+  ]
+}
