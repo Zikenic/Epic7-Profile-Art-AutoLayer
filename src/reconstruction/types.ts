@@ -155,6 +155,7 @@ export interface ReconstructionOptions {
   simplificationOptions?: SimplificationOptions; // Configuration for ImageSimplifier
   backgroundMode?: BackgroundMode;     // Policy for handling background regions ('reconstruct' | 'transparent' | 'ignore')
   maxRegionsPerIteration?: number;     // Number of top priority regions evaluated per iteration (default 12)
+  maxCandidatesPerIteration?: number;  // Hard maximum candidates evaluated on canvas per iteration (default 64)
   globalWeight?: number;               // Weight for global improvement in candidate utility (default 0.25)
   foregroundWeight?: number;           // Weight for foreground-weighted improvement in candidate utility (default 0.45)
   regionalWeight?: number;             // Weight for regional improvement in candidate utility (default 0.30)
@@ -196,6 +197,7 @@ export interface ReconstructionDiagnostics {
   checkpoints: QualityCheckpoint[];
   timingBreakdownMs: {
     candidateGenMs: number;
+    candidateScreeningMs?: number;
     fastEvalMs: number;
     verificationMs: number;
     polishMs: number;

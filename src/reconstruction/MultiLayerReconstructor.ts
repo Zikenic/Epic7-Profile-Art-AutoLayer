@@ -29,7 +29,7 @@ import { PRIMITIVE_SYMMETRIES, normalizeAngleDeg } from './Symmetry.ts';
 import { ResidualAnalyzer, type ResidualRegion } from './ResidualAnalyzer.ts';
 import type { RegionGraph, ImageRegion } from './RegionRepresentation.ts';
 import { ImageSimplifier } from './ImageSimplifier.ts';
-import { colorDifferenceNormalized } from './ColorSpaces.ts';
+import { colorDifferenceNormalized, hexToRgb, rgbToLab } from './ColorSpaces.ts';
 
 const DEFAULT_PRIMITIVES: readonly string[] = [
   'Circle',
@@ -103,7 +103,8 @@ function computeConfigHash(options: Required<Omit<ReconstructionOptions, 'onProg
     `bg=${options.backgroundMode}`,
     `regW=${options.regionalWeight}`,
     `fgW=${options.foregroundWeight}`,
-    `glW=${options.globalWeight}`
+    `glW=${options.globalWeight}`,
+    `maxCand=${options.maxCandidatesPerIteration}`
   ];
   let h = 0x811c9dc5;
   const str = parts.join('|');
@@ -226,6 +227,7 @@ export class MultiLayerReconstructor {
       useSimplification: options.useSimplification ?? false,
       backgroundMode: (options.backgroundMode ?? 'reconstruct') as BackgroundMode,
       maxRegionsPerIteration: options.maxRegionsPerIteration ?? 12,
+      maxCandidatesPerIteration: options.maxCandidatesPerIteration ?? 64,
       globalWeight: options.globalWeight ?? 0.25,
       foregroundWeight: options.foregroundWeight ?? 0.45,
       regionalWeight: options.regionalWeight ?? 0.30,
@@ -310,9 +312,9 @@ export class MultiLayerReconstructor {
         const rIdx = searchPixelRegionMap[i];
         if (rIdx >= 0 && rIdx < imageRegions.length) {
           const r = imageRegions[rIdx];
-          const w_f = r.isBackground ? 0.05 : Math.min(1.0, 0.35 + 0.45 * r.saliencyScore + (r.isPreservedDetail ? 0.35 : 0.0));
+          const w_f = r.isBackground ? 0.0 : Math.min(1.0, 0.35 + 0.45 * r.saliencyScore + (r.isPreservedDetail ? 0.35 : 0.0));
           const at = searchTarget.data[i * 4 + 3] / 255.0;
-          searchForegroundMask[i] = w_f * Math.max(0.05, at);
+          searchForegroundMask[i] = w_f * at;
         } else {
           searchForegroundMask[i] = searchTarget.data[i * 4 + 3] / 255.0;
         }
@@ -330,9 +332,9 @@ export class MultiLayerReconstructor {
           const pIdx = rowOffset + x;
           if (rIdx >= 0 && rIdx < imageRegions.length) {
             const r = imageRegions[rIdx];
-            const w_f = r.isBackground ? 0.05 : Math.min(1.0, 0.35 + 0.45 * r.saliencyScore + (r.isPreservedDetail ? 0.35 : 0.0));
+            const w_f = r.isBackground ? 0.0 : Math.min(1.0, 0.35 + 0.45 * r.saliencyScore + (r.isPreservedDetail ? 0.35 : 0.0));
             const at = verificationTarget.data[pIdx * 4 + 3] / 255.0;
-            verForegroundMask[pIdx] = w_f * Math.max(0.05, at);
+            verForegroundMask[pIdx] = w_f * at;
           } else {
             verForegroundMask[pIdx] = verificationTarget.data[pIdx * 4 + 3] / 255.0;
           }
@@ -341,11 +343,11 @@ export class MultiLayerReconstructor {
     } else {
       for (let i = 0; i < sw * sh; i++) {
         const at = searchTarget.data[i * 4 + 3] / 255.0;
-        searchForegroundMask[i] = at >= 0.05 ? 1.0 : 0.05;
+        searchForegroundMask[i] = at >= 0.05 ? 1.0 : 0.0;
       }
       for (let i = 0; i < verW * verH; i++) {
         const at = verificationTarget.data[i * 4 + 3] / 255.0;
-        verForegroundMask[i] = at >= 0.05 ? 1.0 : 0.05;
+        verForegroundMask[i] = at >= 0.05 ? 1.0 : 0.0;
       }
     }
 
@@ -380,9 +382,11 @@ export class MultiLayerReconstructor {
     let authoritativeRenders = 1;
     let acceptedLayersCount = 0;
     let rejectedCandidatesCount = 0;
+    let hasBackgroundLayerPlaced = false;
     const history: AcceptedLayerRecord[] = [];
     const checkpoints: QualityCheckpoint[] = [];
     let timingCandidateGenMs = 0;
+    let timingCandidateScreeningMs = 0;
     let timingFastEvalMs = 0;
     let timingVerificationMs = 0;
     let timingPolishMs = 0;
@@ -483,7 +487,7 @@ export class MultiLayerReconstructor {
         break;
       }
 
-      if (currentVerificationScore.totalLoss <= 0.001) {
+      if (currentVerificationScore.totalLoss <= 0.001 && currentVerForegroundLoss <= 0.02) {
         stopReason = 'target_matched';
         break;
       }
@@ -512,10 +516,11 @@ export class MultiLayerReconstructor {
         const rankedProposals = activeProposals
           .filter(p => p.meanResidual >= 0.035)
           .map(p => {
-            let priority = p.importance * p.meanResidual;
-            if (p.isBackground && currentLayers.length > 0) {
-              priority *= 0.10;
-            } else if (p.isBackground && currentLayers.length === 0 && resolved.backgroundMode === 'reconstruct') {
+            const areaWeight = Math.sqrt(Math.max(0.0001, p.bounds.width * p.bounds.height));
+            let priority = (areaWeight * 0.70 + p.importance * 0.30) * p.meanResidual;
+            if (p.isBackground && hasBackgroundLayerPlaced) {
+              priority *= 0.005;
+            } else if (p.isBackground && !hasBackgroundLayerPlaced && resolved.backgroundMode === 'reconstruct') {
               priority = 999.0;
             }
             return { proposal: p, priority };
@@ -524,7 +529,11 @@ export class MultiLayerReconstructor {
         rankedProposals.sort((a, b) => b.priority - a.priority);
 
         if (rankedProposals.length === 0) {
-          stopReason = 'target_matched';
+          if (currentVerForegroundLoss <= 0.03) {
+            stopReason = 'target_matched';
+          } else {
+            stopReason = 'no_improvement';
+          }
           break;
         }
 
@@ -533,12 +542,19 @@ export class MultiLayerReconstructor {
           .map(rp => rp.proposal);
 
         // 2. Generate candidate shapes for each top proposal
-        interface ProposalWithCandidates {
+        interface UnscreenedCandidate {
+          layer: Layer;
+          insertIdx: number;
           proposal: ActiveProposal;
-          candidates: Layer[];
+          minPx: number;
+          maxPx: number;
+          minPy: number;
+          maxPy: number;
+          cheapScore: number;
         }
 
-        const proposalGroups: ProposalWithCandidates[] = [];
+        const unscreenedPool: UnscreenedCandidate[] = [];
+
         for (const prop of topProposals) {
           const cands = MultiLayerReconstructor.generateCandidatesForProposal(
             prop,
@@ -548,15 +564,6 @@ export class MultiLayerReconstructor {
             calibTable,
             iteration
           );
-          proposalGroups.push({ proposal: prop, candidates: cands });
-        }
-        timingCandidateGenMs += (Date.now() - tGen0);
-
-        // 3. Fast candidate scoring
-        const tFast0 = Date.now();
-        for (const group of proposalGroups) {
-          if (Date.now() - startTime >= resolved.timeoutMs) break;
-          const prop = group.proposal;
 
           const insertPositions: number[] = [currentLayers.length];
           if (currentLayers.length > 0) {
@@ -578,100 +585,183 @@ export class MultiLayerReconstructor {
           const minPy = Math.max(0, Math.floor(prop.bounds.y * sh));
           const maxPy = Math.min(sh - 1, Math.ceil((prop.bounds.y + prop.bounds.height) * sh));
 
-          for (const candLayer of group.candidates) {
-            if (Date.now() - startTime >= resolved.timeoutMs) break;
+          const propRgb = hexToRgb(prop.paletteHex);
+          const propLab = rgbToLab(propRgb);
 
+          for (const candLayer of cands) {
+            const candRgb = hexToRgb(candLayer.color);
+            const candLab = rgbToLab(candRgb);
+            const dL = candLab.L - propLab.L;
+            const da = candLab.a - propLab.a;
+            const db = candLab.b - propLab.b;
+            const dE = Math.sqrt(dL * dL + da * da + db * db);
+
+            const majR = prop.normalizedRadii.major;
+            const minR = prop.normalizedRadii.minor;
+            const estAspect = minR > 1e-4 ? majR / minR : 1.0;
+            const unitR = calibTable.unitRadii[candLayer.shapeAsset];
+            const primAspect = unitR && unitR.minor > 1e-4 ? unitR.major / unitR.minor : 1.0;
+            const aspectDiff = Math.abs(estAspect - primAspect);
+
+            const propAreaWeight = Math.sqrt(Math.max(0.0001, prop.bounds.width * prop.bounds.height));
             for (const insertIdx of insertPositions) {
-              fastCandidatesEvaluated++;
-
-              let candRaster: RasterImage;
-              if (insertIdx === currentLayers.length) {
-                scratchCanvas.ctx.clearRect(0, 0, sw, sh);
-                if (currentLayers.length > 0) scratchCanvas.ctx.drawImage(baseSearchCanvas.canvas, 0, 0);
-                layerCanvas.ctx.clearRect(0, 0, sw, sh);
-                DeterministicRenderer.render(layerCanvas.ctx, [candLayer], {
-                  width: sw,
-                  height: sh,
-                  backgroundColor: 'transparent',
-                  renderMode: resolved.renderMode
-                });
-                scratchCanvas.ctx.drawImage(layerCanvas.canvas, 0, 0);
-                candRaster = scratchCanvas.getImageData();
-              } else if (insertIdx === 0) {
-                scratchCanvas.ctx.clearRect(0, 0, sw, sh);
-                layerCanvas.ctx.clearRect(0, 0, sw, sh);
-                DeterministicRenderer.render(layerCanvas.ctx, [candLayer], {
-                  width: sw,
-                  height: sh,
-                  backgroundColor: 'transparent',
-                  renderMode: resolved.renderMode
-                });
-                scratchCanvas.ctx.drawImage(layerCanvas.canvas, 0, 0);
-                if (currentLayers.length > 0) scratchCanvas.ctx.drawImage(baseSearchCanvas.canvas, 0, 0);
-                candRaster = scratchCanvas.getImageData();
-              } else {
-                const proposed = [
-                  ...currentLayers.slice(0, insertIdx),
-                  candLayer,
-                  ...currentLayers.slice(insertIdx)
-                ];
-                scratchCanvas.ctx.clearRect(0, 0, sw, sh);
-                DeterministicRenderer.render(scratchCanvas.ctx, proposed, {
-                  width: sw,
-                  height: sh,
-                  backgroundColor: 'transparent',
-                  renderMode: resolved.renderMode
-                });
-                candRaster = scratchCanvas.getImageData();
+              let basePriority = (propAreaWeight * 0.70 + prop.importance * 0.30) * prop.meanResidual * (prop.isPreservedDetail ? 1.5 : 1.0);
+              if (prop.isBackground && !hasBackgroundLayerPlaced && resolved.backgroundMode === 'reconstruct') {
+                basePriority = 999.0;
+              } else if (prop.isBackground && hasBackgroundLayerPlaced) {
+                basePriority *= 0.005;
               }
 
-              const fastScore = ImageScorer.score(searchTarget, candRaster, resolved.weights);
-              const fastGlobalImp = currentSearchScore.totalLoss - fastScore.totalLoss;
+              let insertBonus = 1.0;
+              if (prop.isBackground && insertIdx === 0) insertBonus = 1.25;
+              else if (!prop.isBackground && insertIdx === currentLayers.length) insertBonus = 1.15;
 
-              const candFgLoss = computeForegroundWeightedLoss(searchTarget, candRaster, searchForegroundMask);
-              const fastFgImp = currentSearchForegroundLoss - candFgLoss;
+              const cheapScore = (basePriority * insertBonus) / (1.0 + aspectDiff * 0.5 + dE * 0.05);
 
-              // Measure regional improvement inside target region
-              let candRegionErrSum = 0;
-              let regPixCount = 0;
-              for (let y = minPy; y <= maxPy; y++) {
-                const rowOffset = y * sw;
-                for (let x = minPx; x <= maxPx; x++) {
-                  const pIdx = rowOffset + x;
-                  if (searchPixelRegionMap[pIdx] === prop.sourceRegionIndex) {
-                    candRegionErrSum += computePixelError(searchTarget.data, candRaster.data, pIdx * 4);
-                    regPixCount++;
-                  }
-                }
-              }
-              const candMeanRes = regPixCount > 0 ? candRegionErrSum / regPixCount : 0;
-              const regionalImprovement = prop.meanResidual - candMeanRes;
+              unscreenedPool.push({
+                layer: candLayer,
+                insertIdx,
+                proposal: prop,
+                minPx,
+                maxPx,
+                minPy,
+                maxPy,
+                cheapScore
+              });
+            }
+          }
+        }
+        timingCandidateGenMs += (Date.now() - tGen0);
 
-              // Candidate Utility Formula (Phase 7 Section 9)
-              const utility =
-                resolved.globalWeight * fastGlobalImp +
-                resolved.foregroundWeight * fastFgImp +
-                resolved.regionalWeight * Math.max(0, regionalImprovement);
+        // Stage A Cheap Screening: Select top candidates within maxCandidatesPerIteration
+        const tScreen0 = Date.now();
+        unscreenedPool.sort((a, b) => b.cheapScore - a.cheapScore);
 
-              if (utility > 0 && (fastGlobalImp >= -0.005 || regionalImprovement >= 0.08 || fastFgImp >= 0.005)) {
-                const sym = PRIMITIVE_SYMMETRIES[candLayer.shapeAsset];
-                const symmetryOrder = sym ? (sym.type === 'continuous' ? 99 : (sym.rotationalPeriodDeg === 90 ? 4 : (sym.rotationalPeriodDeg === 180 ? 2 : 1))) : 1;
+        const candidateCap = resolved.maxCandidatesPerIteration;
+        const screenedPool: UnscreenedCandidate[] = [];
+        const shapeCounts = new Map<string, number>();
 
-                candidatePool.push({
-                  layer: candLayer,
-                  insertIndex: insertIdx,
-                  fastScore,
-                  fastImprovement: fastGlobalImp,
-                  foregroundImprovement: fastFgImp,
-                  regionalImprovement,
-                  utility,
-                  combinedImprovement: utility,
-                  targetRegionId: prop.sourceRegionId,
-                  targetRegionIndex: prop.sourceRegionIndex,
-                  symmetryOrder
-                });
+        // Ensure diversity: distribute quota among primitives for each proposal
+        for (const item of unscreenedPool) {
+          if (screenedPool.length >= candidateCap) break;
+          const key = `${item.proposal.id}-${item.layer.shapeAsset}`;
+          const count = shapeCounts.get(key) || 0;
+          if (count < 4) {
+            screenedPool.push(item);
+            shapeCounts.set(key, count + 1);
+          }
+        }
+        if (screenedPool.length < candidateCap) {
+          for (const item of unscreenedPool) {
+            if (screenedPool.length >= candidateCap) break;
+            if (!screenedPool.includes(item)) {
+              screenedPool.push(item);
+            }
+          }
+        }
+        timingCandidateScreeningMs += (Date.now() - tScreen0);
+
+        // 3. Fast candidate scoring (Stage B: Canvas rendering & ImageScorer)
+        const tFast0 = Date.now();
+        for (const item of screenedPool) {
+          if (Date.now() - startTime >= resolved.timeoutMs) break;
+          const candLayer = item.layer;
+          const insertIdx = item.insertIdx;
+          const prop = item.proposal;
+          const minPx = item.minPx;
+          const maxPx = item.maxPx;
+          const minPy = item.minPy;
+          const maxPy = item.maxPy;
+
+          fastCandidatesEvaluated++;
+
+          let candRaster: RasterImage;
+          if (insertIdx === currentLayers.length) {
+            scratchCanvas.ctx.clearRect(0, 0, sw, sh);
+            if (currentLayers.length > 0) scratchCanvas.ctx.drawImage(baseSearchCanvas.canvas, 0, 0);
+            layerCanvas.ctx.clearRect(0, 0, sw, sh);
+            DeterministicRenderer.render(layerCanvas.ctx, [candLayer], {
+              width: sw,
+              height: sh,
+              backgroundColor: 'transparent',
+              renderMode: resolved.renderMode
+            });
+            scratchCanvas.ctx.drawImage(layerCanvas.canvas, 0, 0);
+            candRaster = scratchCanvas.getImageData();
+          } else if (insertIdx === 0) {
+            scratchCanvas.ctx.clearRect(0, 0, sw, sh);
+            layerCanvas.ctx.clearRect(0, 0, sw, sh);
+            DeterministicRenderer.render(layerCanvas.ctx, [candLayer], {
+              width: sw,
+              height: sh,
+              backgroundColor: 'transparent',
+              renderMode: resolved.renderMode
+            });
+            scratchCanvas.ctx.drawImage(layerCanvas.canvas, 0, 0);
+            if (currentLayers.length > 0) scratchCanvas.ctx.drawImage(baseSearchCanvas.canvas, 0, 0);
+            candRaster = scratchCanvas.getImageData();
+          } else {
+            const proposed = [
+              ...currentLayers.slice(0, insertIdx),
+              candLayer,
+              ...currentLayers.slice(insertIdx)
+            ];
+            scratchCanvas.ctx.clearRect(0, 0, sw, sh);
+            DeterministicRenderer.render(scratchCanvas.ctx, proposed, {
+              width: sw,
+              height: sh,
+              backgroundColor: 'transparent',
+              renderMode: resolved.renderMode
+            });
+            candRaster = scratchCanvas.getImageData();
+          }
+
+          const fastScore = ImageScorer.score(searchTarget, candRaster, resolved.weights);
+          const fastGlobalImp = currentSearchScore.totalLoss - fastScore.totalLoss;
+
+          const candFgLoss = computeForegroundWeightedLoss(searchTarget, candRaster, searchForegroundMask);
+          const fastFgImp = currentSearchForegroundLoss - candFgLoss;
+
+          // Measure regional improvement inside target region
+          let candRegionErrSum = 0;
+          let regPixCount = 0;
+          for (let y = minPy; y <= maxPy; y++) {
+            const rowOffset = y * sw;
+            for (let x = minPx; x <= maxPx; x++) {
+              const pIdx = rowOffset + x;
+              if (searchPixelRegionMap[pIdx] === prop.sourceRegionIndex) {
+                candRegionErrSum += computePixelError(searchTarget.data, candRaster.data, pIdx * 4);
+                regPixCount++;
               }
             }
+          }
+          const candMeanRes = regPixCount > 0 ? candRegionErrSum / regPixCount : 0;
+          const regionalImprovement = prop.meanResidual - candMeanRes;
+
+          // Candidate Utility Formula (Phase 7 Section 9)
+          const utility = prop.isBackground
+            ? fastGlobalImp + resolved.regionalWeight * Math.max(0, regionalImprovement)
+            : resolved.globalWeight * fastGlobalImp +
+              resolved.foregroundWeight * fastFgImp +
+              resolved.regionalWeight * Math.max(0, regionalImprovement);
+
+          if (utility > 0 && (fastGlobalImp >= -0.005 || regionalImprovement >= 0.08 || fastFgImp >= 0.005)) {
+            const sym = PRIMITIVE_SYMMETRIES[candLayer.shapeAsset];
+            const symmetryOrder = sym ? (sym.type === 'continuous' ? 99 : (sym.rotationalPeriodDeg === 90 ? 4 : (sym.rotationalPeriodDeg === 180 ? 2 : 1))) : 1;
+
+            candidatePool.push({
+              layer: candLayer,
+              insertIndex: insertIdx,
+              fastScore,
+              fastImprovement: fastGlobalImp,
+              foregroundImprovement: fastFgImp,
+              regionalImprovement,
+              utility,
+              combinedImprovement: utility,
+              targetRegionId: prop.sourceRegionId,
+              targetRegionIndex: prop.sourceRegionIndex,
+              symmetryOrder
+            });
           }
         }
         timingFastEvalMs += (Date.now() - tFast0);
@@ -829,6 +919,16 @@ export class MultiLayerReconstructor {
           )
         : resolved.minImprovement;
 
+      const effectiveFgMinImprovement = resolved.relativeImprovementFraction > 0
+        ? Math.max(
+            resolved.minImprovementFloor,
+            Math.min(
+              resolved.minImprovement,
+              currentVerForegroundLoss * resolved.relativeImprovementFraction
+            )
+          )
+        : resolved.minImprovement;
+
       for (const finalist of finalists) {
         if (Date.now() - startTime >= resolved.timeoutMs) break;
 
@@ -851,15 +951,20 @@ export class MultiLayerReconstructor {
         const verifiedFgLoss = computeForegroundWeightedLoss(verificationTarget, verifiedRender, verForegroundMask);
         const verFgImp = currentVerForegroundLoss - verifiedFgLoss;
 
-        const verifiedUtility =
-          resolved.globalWeight * verGlobalImp +
-          resolved.foregroundWeight * verFgImp +
-          resolved.regionalWeight * Math.max(0, finalist.regionalImprovement);
+        const isBgFinalist = finalist.targetRegionIndex !== undefined && imageRegions[finalist.targetRegionIndex]?.isBackground;
+        const verifiedUtility = activeRegionGraph
+          ? (isBgFinalist
+              ? verGlobalImp + resolved.regionalWeight * Math.max(0, finalist.regionalImprovement)
+              : resolved.globalWeight * verGlobalImp +
+                resolved.foregroundWeight * verFgImp +
+                resolved.regionalWeight * Math.max(0, finalist.regionalImprovement))
+          : verGlobalImp;
 
-        const passesAcceptance =
-          verGlobalImp >= effectiveMinImprovement ||
-          (finalist.regionalImprovement >= 0.10 && verGlobalImp >= resolved.minImprovementFloor) ||
-          (verFgImp >= effectiveMinImprovement && verGlobalImp >= -0.001);
+        const passesAcceptance = activeRegionGraph
+          ? (verGlobalImp >= effectiveMinImprovement ||
+             (finalist.regionalImprovement >= 0.08 && verGlobalImp >= -0.002) ||
+             (verFgImp >= effectiveFgMinImprovement && verGlobalImp >= -0.002))
+          : (verGlobalImp >= effectiveMinImprovement);
 
         if (passesAcceptance) {
           if (!acceptedFinalist || verifiedUtility > acceptedVerifiedUtility + 1e-4) {
@@ -920,6 +1025,10 @@ export class MultiLayerReconstructor {
         layerToCommit,
         ...currentLayers.slice(insertIndex)
       ];
+
+      if (layerToCommit.name.startsWith('Background') || (acceptedFinalist.targetRegionIndex !== undefined && imageRegions[acceptedFinalist.targetRegionIndex]?.isBackground)) {
+        hasBackgroundLayerPlaced = true;
+      }
 
       currentVerificationScore = acceptedScore;
       currentVerForegroundLoss = acceptedFgLoss;
@@ -1143,6 +1252,7 @@ export class MultiLayerReconstructor {
         checkpoints,
         timingBreakdownMs: {
           candidateGenMs: timingCandidateGenMs,
+          candidateScreeningMs: timingCandidateScreeningMs,
           fastEvalMs: timingFastEvalMs,
           verificationMs: timingVerificationMs,
           polishMs: timingPolishMs,

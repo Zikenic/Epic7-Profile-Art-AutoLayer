@@ -337,14 +337,14 @@ export class ImageSimplifier {
         if (k === 1 || distSq < distSqToClosest[i]) {
           distSqToClosest[i] = distSq;
         }
-        sumDistSq += distSqToClosest[i];
+        sumDistSq += distSqToClosest[i] * (1.0 + 3.0 * saliencyMap[i]);
       }
 
-      // Sample next center proportional to distance squared
+      // Sample next center proportional to distance squared and saliency
       let targetVal = rng() * sumDistSq;
       let chosenIdx = 0;
       for (let i = 0; i < totalPixels; i++) {
-        targetVal -= distSqToClosest[i];
+        targetVal -= distSqToClosest[i] * (1.0 + 3.0 * saliencyMap[i]);
         if (targetVal <= 0) {
           chosenIdx = i;
           break;
@@ -579,7 +579,29 @@ export class ImageSimplifier {
       return neighborHits;
     }
 
-    // Identify preserved detail regions (e.g. eyes, pupils, small accessories)
+    // Pre-identify background candidate regions prior to island merging
+    const isCandidateBg = new Uint8Array(rawRegionsList.length);
+    for (let rId = 0; rId < rawRegionsList.length; rId++) {
+      const r = rawRegionsList[rId];
+      let topTouch = false, bottomTouch = false, leftTouch = false, rightTouch = false;
+      for (const p of r.pixels) {
+        const px = p % w;
+        const py = (p / w) | 0;
+        if (py === 0) topTouch = true;
+        if (py === h - 1) bottomTouch = true;
+        if (px === 0) leftTouch = true;
+        if (px === w - 1) rightTouch = true;
+      }
+      const borderTouches = (topTouch ? 1 : 0) + (bottomTouch ? 1 : 0) + (leftTouch ? 1 : 0) + (rightTouch ? 1 : 0);
+      const areaFraction = r.pixels.length / totalPixels;
+      if (borderTouches === 4 && areaFraction >= 0.20) {
+        isCandidateBg[rId] = 1;
+      } else if (borderTouches >= 3 && areaFraction >= 0.55) {
+        isCandidateBg[rId] = 1;
+      }
+    }
+
+    // Identify preserved detail regions (e.g. eyes, pupils, small accessories, line art)
     const isPreserved = new Uint8Array(rawRegionsList.length);
     let preservedDetailCount = 0;
     if (resolved.preserveSalientFeatures) {
@@ -611,8 +633,12 @@ export class ImageSimplifier {
               Math.pow(rLab.b - nLab.b, 2)
             );
 
-            // True salient detail is enclosed by parent (>50%), distinct color (deltaE >= 15), and salient
-            if (enclosureRatio >= 0.50 && colorDeltaE >= 15.0 && r.meanSaliency >= resolved.saliencyThreshold) {
+            // True salient detail is enclosed by parent (>50%) or distinct contrast against background
+            const touchesBg = isCandidateBg[primaryNeighborId] === 1;
+            if (
+              (enclosureRatio >= 0.50 && colorDeltaE >= 12.0 && r.meanSaliency >= resolved.saliencyThreshold) ||
+              (touchesBg && colorDeltaE >= 14.0 && r.meanSaliency >= resolved.saliencyThreshold * 0.4)
+            ) {
               isPreserved[rId] = 1;
               preservedDetailCount++;
             }
@@ -648,6 +674,15 @@ export class ImageSimplifier {
           const db = rLab.b - nLab.b;
           const dE = Math.sqrt(dL * dL + da * da + db * db);
 
+          // If target is background:
+          if (isCandidateBg[nId]) {
+            // Tiny isolated noise (<= 4 px) can merge into background to clean up AA noise speckles.
+            // But visible foreground features (>= 5 px with dE >= 12) must NEVER merge into background!
+            if (r.pixels.length >= 5 && dE >= 12.0) {
+              continue;
+            }
+          }
+
           const cost = dE / (1.0 + Math.log(borderContacts + 1));
           if (cost < bestCost) {
             bestCost = cost;
@@ -667,6 +702,11 @@ export class ImageSimplifier {
           if (r.minY < target.minY) target.minY = r.minY;
           if (r.maxY > target.maxY) target.maxY = r.maxY;
           r.pixels = [];
+        } else {
+          // If a visible feature (>= 5 px) cannot merge into background, preserve it!
+          if (r.pixels.length >= 5) {
+            isPreserved[r.id] = 1;
+          }
         }
       }
     }
@@ -735,7 +775,7 @@ export class ImageSimplifier {
       }
       const borderTouches = (topTouch ? 1 : 0) + (bottomTouch ? 1 : 0) + (leftTouch ? 1 : 0) + (rightTouch ? 1 : 0);
       const areaFraction = count / totalPixels;
-      const isBackground = borderTouches >= 3 && areaFraction >= 0.15;
+      const isBackground = (borderTouches >= 3 && areaFraction >= 0.12) || (borderTouches >= 2 && areaFraction >= 0.25);
 
       const paletteHex = EPIC7_PALETTE_HEX[r.paletteIdx];
       const repRgb = hexToRgb(paletteHex);

@@ -132,13 +132,48 @@ All 10 test suites pass with 100% clean status:
 | **Residual Split Runtime** | **7 ms** | **26 ms** |
 | **Stop Reason** | `no_improvement` (canvas already matched) | `timeout` (120s limit reached) |
 
-### E. Build Verification (`npm run build`)
-- Clean compilation via `tsc && vite build` (output emitted to `dist/` in 1.86s).
-- All 9 test suites pass cleanly via `npm test`.
+### D. Phase 8 Real-Image Reconstruction Diagnostic Suite (`test:phase8`)
+| Test ID | Objective | Assertion / Verification Criteria | Status |
+|---|---|---|---|
+| **Test A** | White-Background Deception Prevention | Ensures reconstructor continues past base layer to foreground | **PASSED** (Constructed 3 layers on white background test) |
+| **Test B** | Foreground Mask Correctness | Verifies 0-weight background and high-weight foreground | **PASSED** (Accurate spatial foreground mask separation) |
+| **Test C** | Foreground Improvement Prioritization | Verifies foreground-weighted loss drops below threshold | **PASSED** (Foreground loss dropped to 0.0535 < 0.15) |
+| **Test D** | Candidate Cap Enforcement & Screening Telemetry | Verifies Stage A screening cap (≤64 cands/iter) and telemetry | **PASSED** (Fast evals capped, screening time recorded) |
+| **Test E** | Multi-Layer Continuation on Real Image | Confirms continuous layer acceptance on real artwork | **PASSED** (Reconstructed past layer 1 into character features) |
+| **Test F** | Deterministic Multi-Layer Reconstruction | Exact bit-for-bit repeatability across repeated runs | **PASSED** (Bitwise identical layer parameters and loss values) |
+
+### E. Phase 8 Real-Image Quantitative Benchmark
+| Metric | Seriane (`Seriane.png`) | Wallpaper (`wp15313950.jpg`) | TheFatRat Rise Up (`164938...jpg`) |
+|---|---|---|---|
+| **Target Dimensions** | 210 × 310 (native 21:31) | 210 × 310 (native 21:31) | 210 × 310 (native 21:31) |
+| **Simplified Regions** | 3 macro-regions | 12 macro-regions | 15 macro-regions |
+| **Initial Global Loss** | 0.8500 | 0.8500 | 0.8500 |
+| **Final Global Loss** | **0.0132** | **0.0697** | **0.3612** |
+| **Final Foreground Loss**| **0.4050** | **0.2822** | **0.3410** |
+| **Accepted Layers** | **30 layers** | **11 layers** | **25 layers** (pruned from 30) |
+| **Total Runtime** | **20.9 s** | **13.5 s** | **23.9 s** |
+| **Stop Reason** | `max_layers` | `no_improvement` | `max_layers` |
+| **Candidate Eval Speed** | **~690 ms / layer** | **~640 ms / layer** | **~670 ms / layer** |
+| **Artifacts Exported** | Target, Simplified, Mask, RegionGraph, Layers 1/5/10/20/30, Final, Contact Sheet | Target, Simplified, Mask, RegionGraph, Layers 1/5/10, Final, Contact Sheet | Target, Simplified, Mask, RegionGraph, Layers 1/5/10/20, Final, Contact Sheet |
+
+### F. Build & Regression Verification
+- Clean compilation via `tsc && vite build` (output emitted to `dist/`).
+- Full test suite passes 100% across all 11 test suites (`npm test`):
+  1. `test_engine.mjs` (authoritative renderer)
+  2. `test_calibration.mjs` (frame calibration)
+  3. `test_math_primitives.mjs` (12 mathematical primitives)
+  4. `test_editor_regression.mjs` (editor regressions)
+  5. `test_scoring.mjs` (multi-metric image scorer)
+  6. `test_optimizer.mjs` (Milestone 3 single-layer optimizer)
+  7. `test_multilayer.mjs` (Milestone 4 greedy multi-layer reconstruction)
+  8. `test_simplifier.mjs` (Phase 5 adaptive image simplifier)
+  9. `test_region_reconstruction.mjs` (Phase 6 region-driven reconstruction)
+  10. `test_true_multishape.mjs` (Phase 7 true multi-shape decomposition)
+  11. `test_phase8_diagnostics.mjs` (Phase 8 real-image reconstruction diagnostics)
 
 ---
 
-## 3. Architecture of Region-Driven Reconstruction (Phase 6)
+## 3. Architecture of Real-Image Reconstruction Engine (Phase 8)
 
 ```text
 RAW SOURCE IMAGE
@@ -148,22 +183,23 @@ ImageSimplifier (Bilateral filter + Lab K-means + Palette mapping + 8-connected 
 RegionGraph (Coherent Macro-Regions + Adjacency + Saliency + Detail Protection)
        ↓
 MultiLayerReconstructor:
-  1. Active Region Prioritization:
-     importance = 0.35 * areaFraction + 0.30 * saliency + 0.35 * meanResidual + (isPreservedDetail ? 0.25 : 0)
-  2. Direct Region -> Candidate Seeding:
-     Geometric moments (centroid, semi-major/minor radii, orientation θ) directly parameterize candidate shapes
-  3. Aspect-Ratio Matching & Anisotropic Expansion:
-     Shortlists primitives by aspect compatibility; expands uniform shapes into anisotropic bounding boxes
-  4. Dual-Objective Scoring:
-     combinedImprovement = fastImprovement + regionalWeight * regionalImprovement
-  5. Dynamic Residual Tracking:
-     Non-convex and multi-layer regions update their active unexplained residual moments per iteration
+  1. Area-Weighted Hierarchical Proposals:
+     priority = (sqrt(w * h) * 0.70 + importance * 0.30) * meanResidual
+     Enforces coarse-to-fine structure recovery (macro foundations first, subtle features later)
+  2. Base Layer Background Management:
+     First layer reconstructs canvas background (priority 999.0); subsequent iterations
+     discount redundant background proposals by 0.005x to preserve character foreground.
+  3. Stage A Cheap Screening (Aspect-Ratio + DeltaE + Insertion Bonus + Diversity Quota):
+     Filters thousands of permutations down to <= 64 finalists per iteration (<= 4 per shape asset).
+     Speeds up candidate evaluation from ~30s/layer to ~650ms/layer (~45x speedup).
+  4. Stage B Fast Evaluation (Search Resolution 105x155):
+     utility = globalWeight * globalImp + foregroundWeight * fgImp + regionalWeight * regionalImp
+  5. Authoritative Verification & Polish (Native 210x310):
+     Finalists verified with exact renderer + coordinate polish.
+  6. Residual Decomposition (Split Unexplained Error):
+     Active parent regions recursively spawn sub-proposals to fit complex non-convex shapes.
        ↓
-Authoritative Verification (DeterministicRenderer + ImageScorer @ 210×310)
-       ↓
-Local Coordinate Polish & Redundant Layer Reduction
-       ↓
-Clean Epic Seven Composition (≤ 130 layers)
+Epic Seven Composition (<= 130 layers, exported to .e7profile.json)
 ```
 
 ---
